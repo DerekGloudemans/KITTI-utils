@@ -6,6 +6,7 @@ import numpy as np
 import cv2
 import PIL
 from PIL import Image
+from math import cos,sin
 
 class Track_Dataset():
     """
@@ -88,11 +89,15 @@ class Track_Dataset():
             x_max = int(round(float(line[8])))
             y_max = int(round(float(line[9])))
             det_dict['bbox2d']     = np.array([x_min,y_min,x_max,y_max])
-            x_pos = float(line[10])
-            y_pos = float(line[11])
-            z_pos = float(line[12])
+            length = float(line[10])
+            width = float(line[11])
+            height = float(line[12])
+            det_dict['dim'] = np.array([length,width,height])
+            x_pos = float(line[13])
+            y_pos = float(line[14])
+            z_pos = float(line[15])
             det_dict['pos'] = np.array([x_pos,y_pos,z_pos])
-            det_dict['rot_y'] = float(line[13])
+            det_dict['rot_y'] = float(line[16])
             det_dict_list.append(det_dict)
         
         # pack all detections for a frame into one list
@@ -126,8 +131,54 @@ class Track_Dataset():
         for i in range(0,12):
             vals[i] = float(line[i+1])
         self.calib = vals.reshape((3,4))
+      
+        
+    def get_coords_3d(self,idx):
+        """ returns the pixel-space coordinates of an object's 3d bounding box
+            computed from the label and the camera parameters matrix
+            for the idx object in the current frame
+            idx - specifies which object in the label to get the 3d coords for
+            bbox3d - 8x2 numpy array with x,y coords for ________ """     
+        # create matrix of bbox coords in physical space 
+        det_dict = self.labels[self.cur_frame][idx]
+        l = det_dict['dim'][0]
+        w = det_dict['dim'][1]
+        h = det_dict['dim'][2]
+        x_pos = det_dict['pos'][0]
+        y_pos = det_dict['pos'][1]
+        z_pos = det_dict['pos'][2]
+        ry = det_dict['rot_y']
+        
+        # in absolute space (meters relative to obj center)
+        obj_coord_array = np.array([[l/2,l/2,-l/2,-l/2,l/2,l/2,-l/2,-l/2],
+                                    [0,0,0,0,-h,-h,-h,-h],
+                                    [w/2,-w/2,-w/2,w/2,w/2,-w/2,-w/2,w/2]])
+        
+        # apply object-centered rotation here
+        R = np.array([[cos(ry),0,sin(ry)],[0,1,0],[-sin(ry),0,cos(ry)]])
+        rotated_corners = np.matmul(R,obj_coord_array)
+        
+        rotated_corners[0,:] += x_pos
+        rotated_corners[1,:] += y_pos
+        rotated_corners[2,:] += z_pos
+        
+        # transform with calibration matrix
+        # add 4th row for matrix multiplication
+        zeros = np.zeros([1,np.size(rotated_corners,1)])
+        rotated_corners = np.concatenate((rotated_corners,zeros),0)
+        P = self.calib
+        
+        pts_2d = np.matmul(P,rotated_corners)
+        pts_2d[0,:] = pts_2d[0,:] / pts_2d[2,:]        
+        pts_2d[1,:] = pts_2d[1,:] / pts_2d[2,:] 
+        pts_2d = pts_2d[:2,:]
+        
+        # apply camera space rotation here?
+        return pts_2d
         
         
+    # End Track Dataset definition
+      
 
 def pil_to_cv(pil_im):
     """ convert PIL image to cv2 image"""
@@ -193,6 +244,32 @@ def plot_bboxes_2d(im,label):
             plot_text(cv_im,bbox,cls,idnum,class_colors)
     return cv_im
     
+def draw_prism(im,coords):
+    """ draws a rectangular prism on a copy of an image given the x,y coordinates 
+    of the 8 corner points, does not make a copy of original image
+    im - cv2 image
+    coords - 2x8 numpy array with x,y coords for each corner
+    prism_im - cv2 image with prism drawn"""
+    prism_im = im.copy()
+    coords = np.transpose(coords).astype(int)
+    #fbr,fbl,rbl,rbr,ftr,ftl,frl,frr
+    edge_array= np.array([[0,1,0,1,1,0,0,0],
+                          [1,0,1,0,0,1,0,0],
+                          [0,1,0,1,0,0,1,0],
+                          [1,0,1,0,0,0,0,1],
+                          [1,0,0,0,0,1,0,1],
+                          [0,1,0,0,1,0,1,0],
+                          [0,0,1,0,0,1,0,1],
+                          [0,0,0,1,1,0,1,0]])
+
+    # try drawing circles
+    for i in range(0,8):
+        for j in range(0,8):
+            if edge_array[i,j] == 1:
+                cv2.line(prism_im,(coords[i,0],coords[i,1]),(coords[j,0],coords[j,1]),(255,255,255),1)
+    return prism_im
+
+
 ############################################## start  tester code here    
     
 train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
@@ -201,14 +278,16 @@ train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_cal
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
 test.load_track(0)
 
-def get_coords_3d(label):
-    """ returns the pixel-space coordinates of an object's 3d bounding box
-        computed from the label and the camera parameters matrix
-    """ 
+
 
 im,label = next(test)
+temp = test.get_coords_3d(3)
+im = pil_to_cv(im)
+test_im = draw_prism(im,temp)
+cv2.imshow("Frame",test_im)
+key = cv2.waitKey(0) & 0xff
 
-while im:
+while False and im:
     
     cv_im = pil_to_cv(im)
     if True:
