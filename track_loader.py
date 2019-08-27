@@ -131,50 +131,6 @@ class Track_Dataset():
         for i in range(0,12):
             vals[i] = float(line[i+1])
         self.calib = vals.reshape((3,4))
-      
-        
-    def get_coords_3d(self,idx):
-        """ returns the pixel-space coordinates of an object's 3d bounding box
-            computed from the label and the camera parameters matrix
-            for the idx object in the current frame
-            idx - specifies which object in the label to get the 3d coords for
-            bbox3d - 8x2 numpy array with x,y coords for ________ """     
-        # create matrix of bbox coords in physical space 
-        det_dict = self.labels[self.cur_frame][idx]
-        l = det_dict['dim'][0]
-        w = det_dict['dim'][1]
-        h = det_dict['dim'][2]
-        x_pos = det_dict['pos'][0]
-        y_pos = det_dict['pos'][1]
-        z_pos = det_dict['pos'][2]
-        ry = det_dict['rot_y']
-        
-        # in absolute space (meters relative to obj center)
-        obj_coord_array = np.array([[l/2,l/2,-l/2,-l/2,l/2,l/2,-l/2,-l/2],
-                                    [0,0,0,0,-h,-h,-h,-h],
-                                    [w/2,-w/2,-w/2,w/2,w/2,-w/2,-w/2,w/2]])
-        
-        # apply object-centered rotation here
-        R = np.array([[cos(ry),0,sin(ry)],[0,1,0],[-sin(ry),0,cos(ry)]])
-        rotated_corners = np.matmul(R,obj_coord_array)
-        
-        rotated_corners[0,:] += x_pos
-        rotated_corners[1,:] += y_pos
-        rotated_corners[2,:] += z_pos
-        
-        # transform with calibration matrix
-        # add 4th row for matrix multiplication
-        zeros = np.zeros([1,np.size(rotated_corners,1)])
-        rotated_corners = np.concatenate((rotated_corners,zeros),0)
-        P = self.calib
-        
-        pts_2d = np.matmul(P,rotated_corners)
-        pts_2d[0,:] = pts_2d[0,:] / pts_2d[2,:]        
-        pts_2d[1,:] = pts_2d[1,:] / pts_2d[2,:] 
-        pts_2d = pts_2d[:2,:]
-        
-        # apply camera space rotation here?
-        return pts_2d
         
         
     # End Track Dataset definition
@@ -186,7 +142,7 @@ def pil_to_cv(pil_im):
     # Convert RGB to BGR 
     return open_cv_image[:, :, ::-1] 
 
-def plot_text(im,bbox,cls,idnum,class_colors):
+def plot_text(im,offset,cls,idnum,class_colors):
     """ Plots filled text box on original image, 
         utility function for plot_bboxes_2d """
     
@@ -202,8 +158,8 @@ def plot_text(im,bbox,cls,idnum,class_colors):
     (text_width, text_height) = cv2.getTextSize(text, font, fontScale=font_scale, thickness=1)[0]
     
     # set the text start position
-    text_offset_x = bbox[0]
-    text_offset_y = bbox[1]
+    text_offset_x = int(offset[0])
+    text_offset_y = int(offset[1])
     # make the coords of the box with a small padding of two pixels
     box_coords = ((text_offset_x, text_offset_y), (text_offset_x + text_width - 2, text_offset_y - text_height - 2))
     cv2.rectangle(im, box_coords[0], box_coords[1], rectangle_bgr, cv2.FILLED)
@@ -241,10 +197,56 @@ def plot_bboxes_2d(im,label):
         
         cv2.rectangle(cv_im,(bbox[0],bbox[1]),(bbox[2],bbox[3]), class_colors[cls], 1)
         if cls != 'DontCare':
-            plot_text(cv_im,bbox,cls,idnum,class_colors)
+            plot_text(cv_im,(bbox[0],bbox[1]),cls,idnum,class_colors)
     return cv_im
+
+
+def get_coords_3d(label,idx,P):
+    """ returns the pixel-space coordinates of an object's 3d bounding box
+        computed from the label and the camera parameters matrix
+        for the idx object in the current frame
+        idx - specifies which object in the label to get the 3d coords for
+        P - camera calibration matrix
+        bbox3d - 8x2 numpy array with x,y coords for ________ """     
+    # create matrix of bbox coords in physical space 
+    det_dict = label[idx]
+    l = det_dict['dim'][0]
+    w = det_dict['dim'][1]
+    h = det_dict['dim'][2]
+    x_pos = det_dict['pos'][0]
+    y_pos = det_dict['pos'][1]
+    z_pos = det_dict['pos'][2]
+    ry = det_dict['rot_y']
     
-def draw_prism(im,coords):
+    # in absolute space (meters relative to obj center)
+    obj_coord_array = np.array([[l/2,l/2,-l/2,-l/2,l/2,l/2,-l/2,-l/2],
+                                [0,0,0,0,-h,-h,-h,-h],
+                                [w/2,-w/2,-w/2,w/2,w/2,-w/2,-w/2,w/2]])
+    
+    # apply object-centered rotation here
+    R = np.array([[cos(ry),0,sin(ry)],[0,1,0],[-sin(ry),0,cos(ry)]])
+    rotated_corners = np.matmul(R,obj_coord_array)
+    
+    rotated_corners[0,:] += x_pos
+    rotated_corners[1,:] += y_pos
+    rotated_corners[2,:] += z_pos
+    
+    # transform with calibration matrix
+    # add 4th row for matrix multiplication
+    zeros = np.zeros([1,np.size(rotated_corners,1)])
+    rotated_corners = np.concatenate((rotated_corners,zeros),0)
+
+    
+    pts_2d = np.matmul(P,rotated_corners)
+    pts_2d[0,:] = pts_2d[0,:] / pts_2d[2,:]        
+    pts_2d[1,:] = pts_2d[1,:] / pts_2d[2,:] 
+    pts_2d = pts_2d[:2,:]
+    
+    # apply camera space rotation here?
+    return pts_2d
+
+    
+def draw_prism(im,coords,color):
     """ draws a rectangular prism on a copy of an image given the x,y coordinates 
     of the 8 corner points, does not make a copy of original image
     im - cv2 image
@@ -262,13 +264,47 @@ def draw_prism(im,coords):
                           [0,0,1,0,0,1,0,1],
                           [0,0,0,1,1,0,1,0]])
 
-    # try drawing circles
+    # plot lines between indicated corner points
     for i in range(0,8):
         for j in range(0,8):
             if edge_array[i,j] == 1:
-                cv2.line(prism_im,(coords[i,0],coords[i,1]),(coords[j,0],coords[j,1]),(255,255,255),1)
+                cv2.line(prism_im,(coords[i,0],coords[i,1]),(coords[j,0],coords[j,1]),color,1)
     return prism_im
 
+def plot_bboxes_3d(im,label,P):
+    """ Plots rectangular rism bboxes on image and returns image
+    im - cv2 or PIL style image (function converts to cv2 style image)
+    label - for one frame, in the form output by parse_label_file
+    P - camera calibration matrix
+    bbox_im -  cv2 im with bboxes and labels plotted
+    """
+        
+    # check type and convert PIL im to cv2 im if necessary
+    assert type(im) in [np.ndarray, PIL.PngImagePlugin.PngImageFile], "Invalid image format"
+    if type(im) == PIL.PngImagePlugin.PngImageFile:
+        im = pil_to_cv(im)
+    cv_im = im.copy() 
+    
+    class_colors = {
+            'Cyclist': (255,150,0),
+            'Pedestrian':(200,800,0),
+            'PersonSitting':(160,30,0),
+            'Car': (0,255,150),
+            'Van': (0,255,100),
+            'Truck': (0,255,50),
+            'Tram': (0,100,255),
+            'Misc': (0,50,255),
+            'DontCare': (200,200,200)}
+    
+    for i in range (0,len(label)):
+        
+        cls = label[i]['class']
+        idnum = label[i]['id']
+        if cls != "DontCare":
+            bbox_3d = get_coords_3d(label,i,P)
+            cv_im = draw_prism(cv_im,bbox_3d,class_colors[cls])
+            plot_text(cv_im,(bbox_3d[0,4],bbox_3d[1,4]),cls,idnum,class_colors)
+    return cv_im
 
 ############################################## start  tester code here    
     
@@ -281,20 +317,15 @@ test.load_track(0)
 
 
 im,label = next(test)
-temp = test.get_coords_3d(3)
-im = pil_to_cv(im)
-test_im = draw_prism(im,temp)
-cv2.imshow("Frame",test_im)
-key = cv2.waitKey(0) & 0xff
 
-while False and im:
+while im:
     
     cv_im = pil_to_cv(im)
     if True:
-        cv_im = plot_bboxes_2d(im,label)
+        cv_im = plot_bboxes_3d(im,label,test.calib)
     cv2.imshow("Frame",cv_im)
     key = cv2.waitKey(1) & 0xff
-    time.sleep(1/30.0)
+    time.sleep(1/10.0)
     if key == ord('q'):
         break
     
