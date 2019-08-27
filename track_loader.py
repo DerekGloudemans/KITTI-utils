@@ -12,7 +12,7 @@ class Track_Dataset():
     Creates an object for referencing the KITTI object tracking dataset (training set)
     """
     
-    def __init__(self, image_dir, label_dir):
+    def __init__(self, image_dir, label_dir,calib_dir):
         """ initializes object. By default, the first track (cur_track = 0) is loaded 
         such that next(object) will pull next frame from the first track"""
 
@@ -20,16 +20,17 @@ class Track_Dataset():
         dir_list = next(os.walk(image_dir))[1]
         self.track_list = [os.path.join(image_dir,item) for item in dir_list]
         self.label_list = [os.path.join(label_dir,item) for item in os.listdir(label_dir)]
+        self.calib_list = [os.path.join(calib_dir,item) for item in os.listdir(calib_dir)]
         
         # keep track of current track (sequence of frames)
         # these variables are assigned new values in the load_track operation below
         # and are listed here only for convenience
-        self.cur_track = 0
+        self.cur_track =  None
         self.cur_track_path = None
-        self.labels = []
-        
+        self.labels = None
+        self.calib = None
         # keep track of current frame
-        self.cur_frame = -1
+        self.cur_frame = None
         
         # load track 0
         self.load_track(0)
@@ -40,8 +41,9 @@ class Track_Dataset():
         self.cur_track = idx
         self.cur_track_path = self.track_list[idx]
         self.cur_frame = -1 # so that calling next will load frame 0
-        self.labels = self.parse_label_file(self.label_list[idx])
-    
+        self.parse_label_file(idx)
+        self.parse_calib_file(idx)
+        
     def __len__(self):
         """ return number of tracks"""
         return len(self.track_list)
@@ -62,9 +64,9 @@ class Track_Dataset():
             print("End of track.")
             return None, None
     
-    def parse_label_file(self,file):
-        "parse label text file into a list of numpy arrays, one for each frame"
-        f = open(file)
+    def parse_label_file(self,idx):
+        """parse label text file into a list of numpy arrays, one for each frame"""
+        f = open(self.label_list[idx])
         line_list = []
         for line in f:
             line = line.split()
@@ -110,7 +112,22 @@ class Track_Dataset():
                     frame_det_list = []
                     idx = idx + 1
         label_list.append(frame_det_list) # append last frame detections
-        return label_list
+        self.labels = label_list
+    
+    def parse_calib_file(self,idx):
+        """parse calib file to get  camera projection matrix"""
+        f = open(self.calib_list[idx])
+        line_list = []
+        for line in f:
+            line = line.split()
+            line_list.append(line)
+        line = line_list[2] # get line corresponding to left color camera
+        vals = np.zeros([12])
+        for i in range(0,12):
+            vals[i] = float(line[i+1])
+        self.calib = vals.reshape((3,4))
+        
+        
 
 def pil_to_cv(pil_im):
     """ convert PIL image to cv2 image"""
@@ -178,10 +195,16 @@ def plot_bboxes_2d(im,label):
     
 ############################################## start  tester code here    
     
-train_im_dir =  "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
-train_lab_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
-test = Track_Dataset(train_im_dir,train_lab_dir)
-test.load_track(10)
+train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
+train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
+train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
+test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
+test.load_track(0)
+
+def get_coords_3d(label):
+    """ returns the pixel-space coordinates of an object's 3d bounding box
+        computed from the label and the camera parameters matrix
+    """ 
 
 im,label = next(test)
 
@@ -193,7 +216,6 @@ while im:
     cv2.imshow("Frame",cv_im)
     key = cv2.waitKey(1) & 0xff
     time.sleep(1/30.0)
-    
     if key == ord('q'):
         break
     
