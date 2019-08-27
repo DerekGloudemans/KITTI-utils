@@ -182,7 +182,7 @@ def plot_bboxes_2d(im,label):
     class_colors = {
             'Cyclist': (255,150,0),
             'Pedestrian':(255,100,0),
-            'PersonSitting':(255,50,0),
+            'Person':(255,50,0),
             'Car': (0,255,150),
             'Van': (0,255,100),
             'Truck': (0,255,50),
@@ -217,7 +217,22 @@ def get_coords_3d(label,idx,P):
     y_pos = det_dict['pos'][1]
     z_pos = det_dict['pos'][2]
     ry = det_dict['rot_y']
+    cls = det_dict['class']
     
+    
+    if True: # correct object heights
+        if cls == "Van":
+            h = 2
+        elif cls == "Car":
+            h = 1.5
+        elif cls == "Truck":
+            h = 3
+        elif cls == "Tram":
+            h = 3
+        elif cls == "Pedestrian":
+            h = 2
+        
+        
     # in absolute space (meters relative to obj center)
     obj_coord_array = np.array([[l/2,l/2,-l/2,-l/2,l/2,l/2,-l/2,-l/2],
                                 [0,0,0,0,-h,-h,-h,-h],
@@ -288,7 +303,7 @@ def plot_bboxes_3d(im,label,P):
     class_colors = {
             'Cyclist': (255,150,0),
             'Pedestrian':(200,800,0),
-            'PersonSitting':(160,30,0),
+            'Person':(160,30,0),
             'Car': (0,255,150),
             'Van': (0,255,100),
             'Truck': (0,255,50),
@@ -312,7 +327,7 @@ train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\
 train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
 train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(0)
+test.load_track(13)
 
 
 
@@ -325,7 +340,7 @@ while im:
         cv_im = plot_bboxes_3d(im,label,test.calib)
     cv2.imshow("Frame",cv_im)
     key = cv2.waitKey(1) & 0xff
-    time.sleep(1/10.0)
+    #time.sleep(1/30.0)
     if key == ord('q'):
         break
     
