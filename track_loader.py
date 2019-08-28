@@ -22,6 +22,9 @@ class Track_Dataset():
         self.track_list = [os.path.join(image_dir,item) for item in dir_list]
         self.label_list = [os.path.join(label_dir,item) for item in os.listdir(label_dir)]
         self.calib_list = [os.path.join(calib_dir,item) for item in os.listdir(calib_dir)]
+        self.track_list.sort()
+        self.label_list.sort()
+        self.calib_list.sort()
         
         # keep track of current track (sequence of frames)
         # these variables are assigned new values in the load_track operation below
@@ -326,8 +329,13 @@ def plot_bboxes_3d(im,label,P):
 train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
 train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
 train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
+
+train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
+train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
+
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(7)
+test.load_track(10)
 
 
 
