@@ -228,7 +228,7 @@ def get_coords_3d(label,idx,P):
         elif cls == "Truck":
             h = 3
         elif cls == "Tram":
-            h = 3
+            h = 3.75
         elif cls == "Pedestrian":
             h = 2
         
@@ -327,7 +327,7 @@ train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\
 train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
 train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(13)
+test.load_track(7)
 
 
 
