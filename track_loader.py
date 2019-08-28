@@ -92,9 +92,9 @@ class Track_Dataset():
             x_max = int(round(float(line[8])))
             y_max = int(round(float(line[9])))
             det_dict['bbox2d']     = np.array([x_min,y_min,x_max,y_max])
-            length = float(line[10])
+            length = float(line[12])
             width = float(line[11])
-            height = float(line[12])
+            height = float(line[10])
             det_dict['dim'] = np.array([length,width,height])
             x_pos = float(line[13])
             y_pos = float(line[14])
@@ -223,7 +223,7 @@ def get_coords_3d(label,idx,P):
     cls = det_dict['class']
     
     
-    if True: # correct object heights
+    if False: # correct object heights
         if cls == "Van":
             h = 2
         elif cls == "Car":
@@ -330,12 +330,12 @@ train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\
 train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
 train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
 
-train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
-train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
-train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
+#train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
+#train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+#train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
 
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(10)
+test.load_track(1)
 
 
 
