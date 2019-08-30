@@ -221,19 +221,6 @@ def get_coords_3d(label,idx,P):
     z_pos = det_dict['pos'][2]
     ry = det_dict['rot_y']
     cls = det_dict['class']
-    
-    
-    if False: # correct object heights
-        if cls == "Van":
-            h = 2
-        elif cls == "Car":
-            h = 1.5
-        elif cls == "Truck":
-            h = 3
-        elif cls == "Tram":
-            h = 3.75
-        elif cls == "Pedestrian":
-            h = 2
         
         
     # in absolute space (meters relative to obj center)
@@ -335,7 +322,7 @@ train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_cal
 #train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
 
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(1)
+test.load_track(10)
 
 
 
