@@ -98,11 +98,11 @@ class trackingEvaluation(object):
              missed         - number of missed targets (FN)
     """
 
-    def __init__(self, t_sha, gt_path="./data/tracking", min_overlap=0.5, max_truncation = 0, min_height = 25, max_occlusion = 2, mail=None, cls="car"):
+    def __init__(self, t_sha, gt_path="./data/tracking", mapping_path = "./data/tracking/evaluate_tracking.seqmap" , min_overlap=0.5, max_truncation = 0, min_height = 25, max_occlusion = 2, mail=None, cls="car"):
         # get number of sequences and
         # get number of frames per sequence from test mapping
         # (created while extracting the benchmark)
-        filename_test_mapping = "./data/tracking/evaluate_tracking.seqmap"
+        filename_test_mapping = mapping_path
         self.n_frames         = []
         self.sequence_name    = []
         with open(filename_test_mapping, "r") as fh:
@@ -120,10 +120,10 @@ class trackingEvaluation(object):
         self.cls = cls
 
         # data and parameter
-        self.gt_path           = os.path.join(gt_path, "label_02")
+        self.gt_path           = gt_path
         self.t_sha             = t_sha
-        self.t_path            = os.path.join("./results", t_sha, "data")
-        self.t_path            = os.path.join(gt_path, "label_02") # temporary addition
+        self.t_path            = t_sha # temporary addition
+        
         # statistics and numbers for evaluation
         self.n_gt              = 0 # number of ground truth detections minus ignored false negatives and true positives
         self.n_igt             = 0 # number of ignored ground truth detections
@@ -652,11 +652,12 @@ class trackingEvaluation(object):
                             if g[i].truncation<self.max_truncation:
                                 g[i].id_switch = 1
                                 ids +=1
+                                print("ID Switch!")
                         if tid != lid and lid != -1:
                             if g[i].truncation<self.max_truncation:
                                 g[i].fragmentation = 1
                                 fr +=1
-
+                                print("Fragmentation!")
                 # save current index
                 last_ids = this_ids
                 # compute MOTP_t
@@ -888,7 +889,7 @@ class trackingEvaluation(object):
 #        print>>dump, "MT", "PT", "ML", "tp", "fp", "fn", "id_switches", "fragments",
 #        print>>dump, "n_gt", "n_gt_trajectories", "n_tr", "n_tr_trajectories"
 
-def evaluate(result_path, gt_path,mail,file_id = ""):
+def evaluate(result_path, gt_path,mapping_path,mail,file_id = ""):
     """
         Entry point for evaluation, will load the data and start evaluation for
         CAR and PEDESTRIAN if available.
@@ -898,7 +899,7 @@ def evaluate(result_path, gt_path,mail,file_id = ""):
     mail.msg("Processing Result for KITTI Tracking Benchmark")
     classes = []
     for c in ("car", "pedestrian"):
-        e = trackingEvaluation(t_sha=result_path, gt_path = gt_path, mail=mail,cls=c)
+        e = trackingEvaluation(t_sha=result_path, gt_path = gt_path,mapping_path = mapping_path, mail=mail,cls=c)
         # load tracker data and check provided classes
         try:
             if not e.loadTracker():
@@ -946,8 +947,11 @@ def evaluate(result_path, gt_path,mail,file_id = ""):
 #   - user_sha (email of user who submitted the results, optional)
 if __name__ == "__main__":
 
-    results_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training"
-    gt_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training"
+    results_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+    results_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/temp_outs"
+    #results_path = ""
+    gt_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+    mapping_path = "./data/tracking/evaluate_tracking.seqmap"
     file_id = "ground_truth" # give a unique tag to the output files
     address = None
 
@@ -958,5 +962,5 @@ if __name__ == "__main__":
       mail = mailpy.Mail("")
 
     # evaluate results and send notification email to user
-    success = evaluate(results_path,gt_path,mail,file_id = file_id)
+    success = evaluate(results_path,gt_path,mapping_path,mail,file_id = file_id)
 
