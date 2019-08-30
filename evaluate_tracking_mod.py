@@ -1,5 +1,13 @@
-#!/usr/bin/env python
-# encoding: utf-8
+""" Derek Gloudemans
+This file is intended to make KITTI evaluation very simple - give a path to the 
+ground truth file and the detection file, and the results are evaluated. I
+left the KITTI evaluation code mostly as is and just modified a few lines to 
+simplify inputs and outputs.
+"""
+
+
+
+
 """
     function that does the evaluation
     input:
@@ -115,7 +123,7 @@ class trackingEvaluation(object):
         self.gt_path           = os.path.join(gt_path, "label_02")
         self.t_sha             = t_sha
         self.t_path            = os.path.join("./results", t_sha, "data")
-        
+        self.t_path            = os.path.join(gt_path, "label_02") # temporary addition
         # statistics and numbers for evaluation
         self.n_gt              = 0 # number of ground truth detections minus ignored false negatives and true positives
         self.n_igt             = 0 # number of ignored ground truth detections
@@ -203,6 +211,7 @@ class trackingEvaluation(object):
             if not self._loadData(self.t_path, cls=self.cls, loading_groundtruth=False):
                 return False
         except IOError:
+            print(1)
             return False
         return True
 
@@ -284,10 +293,11 @@ class trackingEvaluation(object):
                 try:
                     id_frame = (t_data.frame,t_data.track_id)
                     if id_frame in id_frame_cache and not loading_groundtruth:
-                        self.mail.msg("track ids are not unique for sequence %d: frame %d" % (seq,t_data.frame))
-                        self.mail.msg("track id %d occured at least twice for this frame" % t_data.track_id)
-                        self.mail.msg("Exiting...")
-                        #continue # this allows to evaluate non-unique result files
+                        # this is currently supressed because otherwise it gets stuck on dontcare labels
+#                        self.mail.msg("track ids are not unique for sequence %d: frame %d" % (seq,t_data.frame))
+#                        self.mail.msg("track id %d occured at least twice for this frame" % t_data.track_id)
+#                        self.mail.msg("Exiting...")
+                        continue # this allows to evaluate non-unique result files
                         return False
                     id_frame_cache.append(id_frame)
                     f_data[t_data.frame].append(copy.copy(t_data))
@@ -844,7 +854,7 @@ class trackingEvaluation(object):
             s_out += ("%s"%val).rjust(width[1])
         return s_out
       
-    def saveToStats(self):
+    def saveToStats(self,file_id = ""):
         """
             Save the statistics in a whitespace separate file.
         """
@@ -856,29 +866,29 @@ class trackingEvaluation(object):
         mail.msg(summary)
         
         # write summary to file summary_cls.txt
-        filename = os.path.join("./results", self.t_sha, "summary_%s.txt" % self.cls)
+        filename = os.path.join("./results", "{}_summary_{}.txt".format(file_id,self.cls))
         dump = open(filename, "w+")
-        print>>dump, summary
+        print(summary, file = dump)
         dump.close()
         
         # dump all the statistics to the corresponding stats_cls.txt file
-        filename = os.path.join("./results", self.t_sha, "stats_%s.txt" % self.cls)
-        dump = open(filename, "w+")
-        print>>dump, "%.6f " * 21 \
-                % (self.MOTA, self.MOTP, self.MOTAL, self.MODA, self.MODP, \
-                   self.recall, self.precision, self.F1, self.FAR, \
-                   self.MT, self.PT, self.ML, self.tp, self.fp, self.fn, self.id_switches, self.fragments, \
-                   self.n_gt, self.n_gt_trajectories, self.n_tr, self.n_tr_trajectories)
-        dump.close()
+#        filename = os.path.join("./results", self.t_sha, "stats_%s.txt" % self.cls)
+#        dump = open(filename, "w+")
+#        print ("%.6f " * 21 \
+#                % (self.MOTA, self.MOTP, self.MOTAL, self.MODA, self.MODP, \
+#                   self.recall, self.precision, self.F1, self.FAR, \
+#                   self.MT, self.PT, self.ML, self.tp, self.fp, self.fn, self.id_switches, self.fragments, \
+#                   self.n_gt, self.n_gt_trajectories, self.n_tr, self.n_tr_trajectories),file = dump)
+#        dump.close()
         
         # write description of statistics to description.txt
-        filename = os.path.join("./results", self.t_sha, "description.txt")
-        dump = open(filename, "w+")
-        print>>dump, "MOTA", "MOTP", "MOTAL", "MODA", "MODP", "recall", "precision", "F1", "FAR",
-        print>>dump, "MT", "PT", "ML", "tp", "fp", "fn", "id_switches", "fragments",
-        print>>dump, "n_gt", "n_gt_trajectories", "n_tr", "n_tr_trajectories"
+#        filename = os.path.join("./results", self.t_sha, "description.txt")
+#        dump = open(filename, "w+")
+#        print>>dump, "MOTA", "MOTP", "MOTAL", "MODA", "MODP", "recall", "precision", "F1", "FAR",
+#        print>>dump, "MT", "PT", "ML", "tp", "fp", "fn", "id_switches", "fragments",
+#        print>>dump, "n_gt", "n_gt_trajectories", "n_tr", "n_tr_trajectories"
 
-def evaluate(result_sha,mail):
+def evaluate(result_path, gt_path,mail,file_id = ""):
     """
         Entry point for evaluation, will load the data and start evaluation for
         CAR and PEDESTRIAN if available.
@@ -888,7 +898,7 @@ def evaluate(result_sha,mail):
     mail.msg("Processing Result for KITTI Tracking Benchmark")
     classes = []
     for c in ("car", "pedestrian"):
-        e = trackingEvaluation(t_sha=result_sha, mail=mail,cls=c)
+        e = trackingEvaluation(t_sha=result_path, gt_path = gt_path, mail=mail,cls=c)
         # load tracker data and check provided classes
         try:
             if not e.loadTracker():
@@ -917,7 +927,7 @@ def evaluate(result_sha,mail):
             mail.msg("Feel free to contact us (lenz@kit.edu), if you receive this error message:")
             mail.msg("   Caught exception while creating results.")
         if e.compute3rdPartyMetrics():
-            e.saveToStats()
+            e.saveToStats(file_id)
         else:
             mail.msg("There seem to be no true positives or false positives at all in the submitted data.")
 
@@ -934,25 +944,19 @@ def evaluate(result_sha,mail):
 #   - result_sha (unique key of results)
 #   - user_sha (key of user who submitted the results, optional)
 #   - user_sha (email of user who submitted the results, optional)
-if __name__ != "__main__":
+if __name__ == "__main__":
 
-    # check for correct number of arguments. if user_sha and email are not supplied,
-    # no notification email is sent (this option is used for auto-updates)
-    if len(sys.argv)!=2 and len(sys.argv)!=4:
-      print ("Usage: python eval_tracking.py result_sha [user_sha email]")
-      sys.exit(1);
-
-    # get unique sha key of submitted results
-    result_sha = sys.argv[1]
+    results_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training"
+    gt_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training"
+    file_id = "ground_truth" # give a unique tag to the output files
+    address = None
 
     # create mail messenger and debug output object
-    if len(sys.argv)==4:
-      mail = mailpy.Mail(sys.argv[3])
+    if address:
+      mail = mailpy.Mail(address)
     else:
       mail = mailpy.Mail("")
 
     # evaluate results and send notification email to user
-    success = evaluate(result_sha,mail)
-    if len(sys.argv)==4: mail.finalize(success,"tracking",result_sha,sys.argv[2])
-    else:                mail.finalize(success,"tracking",result_sha,"")
+    success = evaluate(results_path,gt_path,mail,file_id = file_id)
 
