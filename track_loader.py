@@ -204,15 +204,15 @@ def plot_bboxes_2d(im,label):
     return cv_im
 
 
-def get_coords_3d(label,idx,P):
+def get_coords_3d(det_dict,P):
     """ returns the pixel-space coordinates of an object's 3d bounding box
         computed from the label and the camera parameters matrix
         for the idx object in the current frame
-        idx - specifies which object in the label to get the 3d coords for
+        det_dict - object representing one detection
         P - camera calibration matrix
         bbox3d - 8x2 numpy array with x,y coords for ________ """     
     # create matrix of bbox coords in physical space 
-    det_dict = label[idx]
+
     l = det_dict['dim'][0]
     w = det_dict['dim'][1]
     h = det_dict['dim'][2]
@@ -262,8 +262,8 @@ def draw_prism(im,coords,color):
     #fbr,fbl,rbl,rbr,ftr,ftl,frl,frr
     edge_array= np.array([[0,1,0,1,1,0,0,0],
                           [1,0,1,0,0,1,0,0],
-                          [0,1,0,1,0,0,1,0],
-                          [1,0,1,0,0,0,0,1],
+                          [0,1,0,1,0,0,1,1],
+                          [1,0,1,0,0,0,1,1],
                           [1,0,0,0,0,1,0,1],
                           [0,1,0,0,1,0,1,0],
                           [0,0,1,0,0,1,0,1],
@@ -277,7 +277,7 @@ def draw_prism(im,coords,color):
     return prism_im
 
 def plot_bboxes_3d(im,label,P):
-    """ Plots rectangular rism bboxes on image and returns image
+    """ Plots rectangular prism bboxes on image and returns image
     im - cv2 or PIL style image (function converts to cv2 style image)
     label - for one frame, in the form output by parse_label_file
     P - camera calibration matrix
@@ -306,10 +306,63 @@ def plot_bboxes_3d(im,label,P):
         cls = label[i]['class']
         idnum = label[i]['id']
         if cls != "DontCare":
-            bbox_3d = get_coords_3d(label,i,P)
+            bbox_3d = get_coords_3d(label[i],P)
             cv_im = draw_prism(cv_im,bbox_3d,class_colors[cls])
             plot_text(cv_im,(bbox_3d[0,4],bbox_3d[1,4]),cls,idnum,class_colors)
     return cv_im
+
+def create_label_dataset(im_dir,label_dir,calib_dir,test_type = "frame", holdout = 0.15):
+    """
+    Generates a dataset of original camera-space and transformed image-space labels
+    label_dir - string, the directory of examples (for KITTI use training labels, though
+                this data will be used for both training and testing)
+    test_type - string from ["frame", "sequence"], if frame, holdout proportion of random 
+                objects are used as test holdout. If sequence, 3 random sequences are used as holdout
+    holdout - float, percentage of data for frame holdout
+    """
+        
+    camera_space_labels = []
+    image_space_labels = []
+    
+    data = Track_Dataset(im_dir,label_dir,calib_dir)    
+    for i in range(0, len(data.label_list)):
+        
+        data.load_track(i)
+        labels = data.labels
+        P = data.calib
+        
+        # each item in labels is a det_dir corresponding to one label
+        for frame in labels:
+            for det_dict in frame:
+                if det_dict['class'] not in ["dontcare","DontCare"]:
+                    # get camera space coords
+                    X = det_dict['pos'][0]
+                    Y = det_dict['pos'][1]
+                    Z = det_dict['pos'][2]
+                    h = det_dict['dim'][0]
+                    w = det_dict['dim'][1]
+                    l = det_dict['dim'][2]
+                    alpha = det_dict['alpha']
+                    rot_y = det_dict['rot_y']
+                    camera_space = np.array([X,Y,Z,h,w,l,alpha,rot_y])
+                    
+                    #get image space coords
+                    tf_coords = get_coords_3d(det_dict,P).reshape([16])
+                    dist = np.sqrt(X**2 + Y**2 + Z**2)
+                    h_ratio = h/dist
+                    w_ratio = w/dist
+                    l_ratio = l/dist
+                    image_space = np.array([item for item in tf_coords] + [h_ratio, w_ratio, l_ratio])
+                    
+                    camera_space_labels.append(camera_space)
+                    image_space_labels.append(image_space)
+            
+    image_space_labels = np.asarray(image_space_labels)
+    camera_space_labels = np.asarray(camera_space_labels)
+    return image_space_labels,camera_space_labels
+            
+        
+    
 
 ############################################## start  tester code here    
     
@@ -322,7 +375,7 @@ train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_cal
 #train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
 
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(10)
+test.load_track(3)
 
 
 
@@ -345,7 +398,8 @@ while im:
     
 cv2.destroyAllWindows()
 
-
+if False:
+    X,Y = create_label_dataset(train_im_dir,train_lab_dir,train_calib_dir)
 
 
         
