@@ -354,8 +354,10 @@ def create_label_dataset(im_dir,label_dir,calib_dir,test_type = "frame", holdout
                     l_ratio = l/dist
                     image_space = np.array([item for item in tf_coords] + [h_ratio, w_ratio, l_ratio])
                     
-                    camera_space_labels.append(camera_space)
-                    image_space_labels.append(image_space)
+                    # remove examples behind camera
+                    if X > 0 and det_dict['truncation'] == 0:
+                        camera_space_labels.append(camera_space)
+                        image_space_labels.append(image_space)
             
     image_space_labels = np.asarray(image_space_labels)
     camera_space_labels = np.asarray(camera_space_labels)
@@ -365,41 +367,41 @@ def create_label_dataset(im_dir,label_dir,calib_dir,test_type = "frame", holdout
     
 
 ############################################## start  tester code here    
+if __name__ == "__main__":    
+    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
+    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
+    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
     
-train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
-train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
-train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
-
-#train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
-#train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
-#train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
-
-test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(3)
-
-
-
-im,label = next(test)
-
-while im:
+    #train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
+    #train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+    #train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
     
-    cv_im = pil_to_cv(im)
-    if True:
-        cv_im = plot_bboxes_3d(im,label,test.calib)
-    cv2.imshow("Frame",cv_im)
-    key = cv2.waitKey(1) & 0xff
-    #time.sleep(1/30.0)
-    if key == ord('q'):
-        break
+    test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
+    test.load_track(3)
     
-    # load next frame
+    
+    
     im,label = next(test)
-
     
-cv2.destroyAllWindows()
-
-if False:
-    X,Y = create_label_dataset(train_im_dir,train_lab_dir,train_calib_dir)
-
-
+    while im:
         
+        cv_im = pil_to_cv(im)
+        if True:
+            cv_im = plot_bboxes_3d(cv_im,label,test.calib)
+        cv2.imshow("Frame",cv_im)
+        key = cv2.waitKey(1) & 0xff
+        #time.sleep(1/30.0)
+        if key == ord('q'):
+            break
+        
+        # load next frame
+        im,label = next(test)
+    
+        
+    cv2.destroyAllWindows()
+    
+    if True:
+        X,Y = create_label_dataset(train_im_dir,train_lab_dir,train_calib_dir)
+    
+    
+            
