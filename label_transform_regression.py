@@ -65,8 +65,8 @@ class FcNet(nn.Module):
 
         # get size of some layers
         start_num = 19
-        max_num = 1000
-        mid_num = 100
+        max_num = 400
+        mid_num = 50
         end_num = 8
         
         # define regressor
@@ -247,7 +247,7 @@ if __name__ == "__main__":
     val_ratio = 0.2
     x_path = "C:\\Users\\derek\\OneDrive\\Documents\\Derek's stuff\\Not Not School\\Lab\\Code\\KITTI-utils\\label_dataset\\X.npy"
     y_path = "C:\\Users\\derek\\OneDrive\\Documents\\Derek's stuff\\Not Not School\\Lab\\Code\\KITTI-utils\\label_dataset\\Y.npy"
-    checkpoint_file = "label_convert_240.pt"
+    checkpoint_file = None
     
     
     # split data into train and test data
@@ -274,17 +274,17 @@ if __name__ == "__main__":
         Y_avg = np.average(Y,0)
         X_max = np.max(X,0)
         Y_max = np.max(Y,0)
-        X_train = (X_train -X_min[None,:])  /(X_max-X_min)[None,:]
-        X_test =  (X_test  -X_min[None,:])  / (X_max-X_min)[None,:]
-        Y_train = (Y_train -Y_min[None,:])  / (Y_max-Y_min)[None,:]
-        Y_test =  (Y_test   -Y_min[None,:]) / (Y_max-Y_min)[None,:]
+        X_train = (X_train -X_min[None,:])  /(X_avg)[None,:]
+        X_test =  (X_test  -X_min[None,:])  / (X_avg)[None,:]
+        Y_train = (Y_train -Y_min[None,:])  / (Y_avg)[None,:]
+        Y_test =  (Y_test   -Y_min[None,:]) / (Y_avg)[None,:]
     
     
     # TODO = fix this create training params
     params = {'batch_size': 32,
               'shuffle': True,
               'num_workers': 0}
-    num_epochs = 250
+    num_epochs = 100
     
     
     
@@ -307,15 +307,15 @@ if __name__ == "__main__":
     
     # define loss function
     criterion = nn.MSELoss()
-
+    criterion = nn.SmoothL1Loss()
     # all parameters are being optimized, not just fc layer
-    optimizer = optim.Adam(model.parameters(), lr=0.00001)
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
     
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     
     # define start epoch for consistent labeling if checkpoint is reloaded
-    start_epoch = 50
+    start_epoch = 0
 
 #    # if checkpoint specified, load model and optimizer weights from checkpoint
 #    if checkpoint_file != None:
@@ -329,7 +329,7 @@ if __name__ == "__main__":
 #    dataloaders = {"val":trainloader, "train": testloader}
 #    datasizes = {"val": len(train_data), "train": len(test_data)}
     
-    if False:   
+    if True:   
     # train model
         print("Beginning training.")
         model = train_model(model, criterion, optimizer, 
