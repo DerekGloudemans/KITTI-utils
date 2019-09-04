@@ -88,6 +88,63 @@ class FcNet(nn.Module):
         out = self.regress(x)
         
         return out
+
+def create_label_dataset(im_dir,label_dir,calib_dir,test_type = "frame", holdout = 0.15):
+    """
+    Generates a dataset of original camera-space and transformed image-space labels
+    label_dir - string, the directory of examples (for KITTI use training labels, though
+                this data will be used for both training and testing)
+    test_type - string from ["frame", "sequence"], if frame, holdout proportion of random 
+                objects are used as test holdout. If sequence, 3 random sequences are used as holdout
+    holdout - float, percentage of data for frame holdout
+    """
+        
+    camera_space_labels = []
+    image_space_labels = []
+    
+    data = Track_Dataset(im_dir,label_dir,calib_dir)    
+    for i in range(0, len(data.label_list)):
+        
+        data.load_track(i)
+        labels = data.labels
+        P = data.calib
+        
+        # each item in labels is a det_dir corresponding to one label
+        for frame in labels:
+            for det_dict in frame:
+                if det_dict['class'] not in ["dontcare","DontCare"]:
+                    # get camera space coords
+                    X = det_dict['pos'][0]
+                    Y = det_dict['pos'][1]
+                    Z = det_dict['pos'][2]
+                    h = det_dict['dim'][0]
+                    w = det_dict['dim'][1]
+                    l = det_dict['dim'][2]
+                    alpha = det_dict['alpha']
+                    rot_y = det_dict['rot_y']
+                    camera_space = np.array([X,Y,Z,h,w,l,alpha,rot_y])
+                    
+                    #get image space coords
+                    tf_coords = get_coords_3d(det_dict,P)[0].reshape([16])
+                    dist = np.sqrt(X**2 + Y**2 + Z**2)
+                    h_ratio = h/dist
+                    w_ratio = w/dist
+                    l_ratio = l/dist
+                    image_space = np.array([item for item in tf_coords] + [h_ratio, w_ratio, l_ratio])
+                    
+                    # remove examples behind camera
+                    if X > 0 and det_dict['truncation'] == 0:
+                        camera_space_labels.append(camera_space)
+                        image_space_labels.append(image_space)
+            
+    image_space_labels = np.asarray(image_space_labels)
+    camera_space_labels = np.asarray(camera_space_labels)
+    return image_space_labels,camera_space_labels
+            
+        
+    
+
+
     
 def test_output(data,idx,model):
     """
