@@ -77,14 +77,14 @@ def create_xy_labels(im_dir,label_dir,calib_dir):
                     camera_space = np.array([X,Y,Z,h,w,l,alpha,rot_y])
                     
                     #get image space coords and depths
-                    tf_coords,tf_depths = get_coords_3d(det_dict,P)
+                    tf_coords,tf_depths,_ = get_coords_3d(det_dict,P)
                     tf_coords = tf_coords.reshape(16)
                     
                     #organize camera_space features
                     image_space = get_image_space_features(tf_coords,P,im_size)
                     
                     # remove examples behind camera
-                    if X > 0 and det_dict['truncation'] == 0:
+                    if Z > 0 and det_dict['truncation'] < 2:
                         camera_space_labels.append(camera_space)
                         image_space_labels.append(image_space)
                         depth_labels.append(tf_depths)
@@ -253,24 +253,28 @@ def label_conversion(model,label,P,im_size):
             
             # model output depths
             pred_depths = (model(X).data.cpu().numpy())[None,:]*100
-            
+
             # convert into camera space again
-            pts_3d = im_to_cam_space(coords,real_depth[None,:],P)
+            pts_3d = im_to_cam_space(coords,pred_depths,P)
+            #pts_3d = im_to_cam_space(coords,real_depth[None,:],P)
+
             
             X = np.average(pts_3d[0])
-            Y = np.average(pts_3d[1])
+            Y = np.max(pts_3d[1])
             Z = np.average(pts_3d[2])
             
             # find best l,w,h 
             dist = lambda pts,a,b: np.sqrt((pts[0,a]-pts[0,b])**2 + \
                                            (pts[1,a]-pts[1,b])**2 + \
                                            (pts[2,a]-pts[2,b])**2)
+            # NOTE - I am not totally sure why the first one is height and not width
+            # other than that the points must be in a different order than I suspected
             
-            length  = (dist(pts_3d,0,3) + dist(pts_3d,1,2) + \
+            height  = (dist(pts_3d,0,3) + dist(pts_3d,1,2) + \
                       dist(pts_3d,4,7) + dist(pts_3d,5,6)) /4.0
             width  =  (dist(pts_3d,0,1) + dist(pts_3d,3,2) + \
                       dist(pts_3d,4,5) + dist(pts_3d,7,6)) /4.0
-            height =  (dist(pts_3d,0,4) + dist(pts_3d,1,5) + \
+            length =  (dist(pts_3d,0,4) + dist(pts_3d,1,5) + \
                       dist(pts_3d,2,6) + dist(pts_3d,3,7)) /4.0
             
             # find best alpha by averaging angles of all 8 relevant line segments

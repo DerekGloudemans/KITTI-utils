@@ -113,7 +113,7 @@ if __name__ == "__main__":
 
 # test plot
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(0)
+test.load_track(10)
 
 
 
@@ -123,7 +123,7 @@ while im:
     
     cv_im = pil_to_cv(im)
     if True:
-        cv_im = plot_bboxes_3d(cv_im,label,test.calib)
+        cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
         
         # try conversion
         out = label_conversion(model,label,test.calib,im.size)

@@ -281,12 +281,13 @@ def draw_prism(im,coords,color):
     return prism_im
 
 
-def plot_bboxes_3d(im,label,P):
+def plot_bboxes_3d(im,label,P, style = "normal"):
     """ Plots rectangular prism bboxes on image and returns image
     im - cv2 or PIL style image (function converts to cv2 style image)
     label - for one frame, in the form output by parse_label_file
     P - camera calibration matrix
     bbox_im -  cv2 im with bboxes and labels plotted
+    style - string, "ground_truth" or "normal"  ground_truth plots boxes as white
     """
         
     # check type and convert PIL im to cv2 im if necessary
@@ -307,13 +308,16 @@ def plot_bboxes_3d(im,label,P):
             'DontCare': (200,200,200)}
     
     for i in range (0,len(label)):
-        
-        cls = label[i]['class']
-        idnum = label[i]['id']
-        if cls != "DontCare":
-            bbox_3d,_,_ = get_coords_3d(label[i],P)
-            cv_im = draw_prism(cv_im,bbox_3d,class_colors[cls])
-            plot_text(cv_im,(bbox_3d[0,4],bbox_3d[1,4]),cls,idnum,class_colors)
+        if True: #label[i]['pos'][2] > 0.5 and label[i]['truncation'] < 2:
+            cls = label[i]['class']
+            idnum = label[i]['id']
+            if cls != "DontCare":
+                bbox_3d,_,_ = get_coords_3d(label[i],P)
+                if style == "ground_truth": # for plotting ground truth and predictions
+                    cv_im = draw_prism(cv_im,bbox_3d,(255,255,255))
+                else:
+                    cv_im = draw_prism(cv_im,bbox_3d,class_colors[cls])
+                plot_text(cv_im,(bbox_3d[0,4],bbox_3d[1,4]),cls,idnum,class_colors)
     return cv_im
 
  ################################# Tester Code ################################    
