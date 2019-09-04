@@ -107,6 +107,9 @@ def get_image_space_features(tf_coords,P,im_size):
     """
     im_size = np.array([im_size[1],im_size[0]])[None,:] # add second axis
     
+    if np.shape(tf_coords) == (2,8):
+        tf_coords = tf_coords.reshape(16)
+    
     # flatten camera calibration matrix
     P_flat = P.reshape(12)
     c = tf_coords # shorten name for expressions below
@@ -210,7 +213,80 @@ def create_datasets(im_dir,label_dir,calib_dir, val_ratio = 0.2, seed = 0):
     
     return train_data,test_data,camera_space
 
-  
+def im_to_cam_space(pts_2d,pts_depth,P):
+    """
+    Converts a set of image_space points into a set of camera-space points
+    pts_2d -  2 x 8 numpy array of xy coordinates for each corner
+    pts_depth - 1 x 8 numpy array with depth in z direction (predicted by network)
+    P - 3 x 4 camera calibration matrix
+    """
+    P_inv = np.linalg.inv(P[:,0:3])
+    pts_2d = np.concatenate((pts_2d,pts_depth),0)
+    
+    pts_3d = np.matmul(P_inv,pts_2d)
+    return pts_3d
+
+def label_conversion(model,label,P,im_size):
+    """ Takes in one label (bboxes for one frame). For each, converts into 
+        image space, uses network to predict camera_space, and averages out points 
+        to create best fit 3d bounding box. Returns a list of det_dict objects
+        label - list of det_dicts
+        P - 3 x 4 numpy array, camera calibration matrix
+        im_size - 2-tuple, size of image
+    """
+    new_label = []
+    
+    for det_dict in label:
+        if det_dict['class'] not in ['DontCare', 'dontcare']:
+            # get image coords
+            coords, temp = get_coords_3d(det_dict,P)
+            X = get_image_space_features(coords,P,im_size)
+            X = torch.from_numpy(X).float()
+            
+            # model output depths
+            pred_depths = (model(X).data.cpu().numpy())[None,:]*100
+            
+            # convert into camera space again
+            pts_3d = im_to_cam_space(coords,temp[None,:],P)
+            
+            X = np.average(pts_3d[0])
+            Y = np.average(pts_3d[1])
+            Z = np.average(pts_3d[2])
+            
+            # find best l,w,h 
+            dist = lambda pts,a,b: np.sqrt((pts[0,a]-pts[0,b])**2 + \
+                                           (pts[1,a]-pts[1,b])**2 + \
+                                           (pts[2,a]-pts[2,b])**2)
+            
+            length  = (dist(pts_3d,0,3) + dist(pts_3d,1,2) + \
+                      dist(pts_3d,4,7) + dist(pts_3d,5,6)) /4.0
+            width  =  (dist(pts_3d,0,1) + dist(pts_3d,3,2) + \
+                      dist(pts_3d,4,5) + dist(pts_3d,7,6)) /4.0
+            height =  (dist(pts_3d,0,4) + dist(pts_3d,1,5) + \
+                      dist(pts_3d,2,6) + dist(pts_3d,3,7)) /4.0
+            
+            # find best alpha by averaging angles of all 8 relevant line segments
+            # defined for line segments backwards to forwards and left to right
+            ang = lambda pts,a,b: np.arctan((pts[1,b]-pts[1,a])/(pts[0,b]-pts[0,a]))
+            
+            angle = (ang(pts_3d,0,1) + ang(pts_3d,3,2) + ang(pts_3d,4,5) + ang(pts_3d,7,6))/4.0 + \
+                    ((ang(pts_3d,3,0) + ang(pts_3d,2,1) + ang(pts_3d,7,4) + ang(pts_3d,6,5))/4.0 - np.pi/2)
+            alpha = (np.pi - angle)
+    
+            # append to new label
+            det_dict['pos'][0] = X
+            det_dict['pos'][1] = Y
+            det_dict['pos'][2] = Z
+            det_dict['dim'][0] = height
+            det_dict['dim'][1] = width
+            det_dict['dim'][2] = length
+            det_dict['alpha'] = alpha
+            
+            new_label.append(det_dict)
+        
+    return new_label
+        
+    
     
 #---------------------------------Tester Code---------------------------------#
 

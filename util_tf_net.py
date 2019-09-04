@@ -200,7 +200,7 @@ if __name__ == "__main__":
     random.seed = seed
     val_ratio = 0.2
     num_epochs = 500
-    checkpoint_file = None
+    checkpoint_file = "pts_L1_140.pt"
     train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
     train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
     train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
@@ -249,7 +249,7 @@ if __name__ == "__main__":
 #    dataloaders = {"val":trainloader, "train": testloader}
 #    datasizes = {"val": len(train_data), "train": len(test_data)}
     
-    if True:   
+    if False:   
     # train model
         print("Beginning training.")
         model = train_model(model, criterion, optimizer, 
@@ -258,6 +258,7 @@ if __name__ == "__main__":
         
     
     torch.cuda.empty_cache()
+    
+    
+      
 
-    print(test_output(train_data,25,model))
-  
