@@ -1,33 +1,22 @@
+"""
+Contains functions for converting from TrackDataset format to tensor format for 
+training a label conversion network.
+"""
+
+
 #------------------ Import necessary and unnecessary packages-----------------#
 # this seems to be a popular thing to do so I've done it here
 from __future__ import print_function, division
 
 # torch and specific torch packages for convenience
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils import data
-from torch.optim import lr_scheduler
-from torch import multiprocessing
-
-# for convenient data loading, image representation and dataset management
-from torchvision import models, transforms
-from PIL import Image, ImageFile
-ImageFile.LOAD_TRUNCATED_IMAGES = True
-import cv2
-from scipy.ndimage import affine_transform
 
 # always good to have
-import time
-import os
 import numpy as np    
-import _pickle as pickle
 import random
-import copy
-import matplotlib.pyplot as plt
-import math
 
 from util_load import Track_Dataset, get_coords_3d
+
 
 #--------------------------- Definitions section -----------------------------#
 class Dataset():
@@ -110,8 +99,13 @@ def create_xy_labels(im_dir,label_dir,calib_dir):
  
 
 def get_image_space_features(tf_coords,P,im_size):
-    
-    im_size = np.asarray(im_size)[None,:] # add second axis
+    """
+    converts xy coordinates for 8 bbox corners into normalized featurespace for training
+    tf_coords - 2 x 8 numpy array
+    P - 3 x 4 numpy array, camera calibration matrix
+    im_size - 2-tuple, image dimensions
+    """
+    im_size = np.array([im_size[1],im_size[0]])[None,:] # add second axis
     
     # flatten camera calibration matrix
     P_flat = P.reshape(12)
@@ -122,21 +116,21 @@ def get_image_space_features(tf_coords,P,im_size):
     fwr = dist(c[0],c[8],c[1],c[9])   / dist(c[4],c[12],c[5],c[13])
     tlr = dist(c[0],c[8],c[3],c[11])  / dist(c[1],c[9],c[2],c[10])
     blr = dist(c[4],c[12],c[7],c[15]) / dist(c[5],c[13],c[6],c[14])
-    rhr = dist(c[3],c[11],c[7],c[15]) / dist(c[2],c[12],c[6],c[14])
-    rwr = dist(c[3],c[11],c[2],c[12]) / dist(c[7],c[15],c[6],c[14])
+    rhr = dist(c[3],c[11],c[7],c[15]) / dist(c[2],c[10],c[6],c[14])
+    rwr = dist(c[3],c[11],c[2],c[10]) / dist(c[7],c[15],c[6],c[14])
     
     lw  = (dist(c[0],c[8],c[3],c[11]) + dist(c[1],c[9],c[2],c[10])) / \
-    (dist(c[3],c[11],c[2],c[12]) + dist(c[0],c[8],c[1],c[9]) )
+    (dist(c[3],c[11],c[2],c[10]) + dist(c[0],c[8],c[1],c[9]) )
     
     lh  = (dist(c[0],c[8],c[3],c[11]) + dist(c[1],c[9],c[2],c[10])) / \
-    (dist(c[3],c[11],c[7],c[15]) + dist(c[2],c[12],c[6],c[14]))
+    (dist(c[3],c[11],c[7],c[15]) + dist(c[2],c[10],c[6],c[14]))
     
     ratios = [fhr,fwr,tlr,blr,rhr,rwr,lw,lh]
     
     # normalize ratios by dividing by 10
-    ratios = [j/10 for j in ratios]
+    ratios = [j/2 for j in ratios]
     # normalize P by dividing by 1000
-    P = [k/1000 for k in P]
+    P_flat = [k/1000 for k in P_flat]
     # normalize coords by dividing by image size
     tf_coords = tf_coords.reshape(8,2) / im_size
     tf_coords = tf_coords.reshape(16)
@@ -187,8 +181,15 @@ def get_image_space_features(tf_coords,P,im_size):
 
 def create_datasets(im_dir,label_dir,calib_dir, val_ratio = 0.2, seed = 0):
     """
+    creates datasets of tensors for PyTorch training
+    label_dir - string, the directory of examples (for KITTI use training labels, though
+                this data will be used for both training and testing)
+    calib_dir - "
+    im_dir - "
+    val_ratio - ratio of data to put in test set
+    seed - integer, random seed for repeatability
     """
-    random.seed = 0
+    random.seed = seed
     X,Y,camera_space = create_xy_labels(im_dir,label_dir,calib_dir)
     
     n_examples = len(X)
@@ -211,7 +212,7 @@ def create_datasets(im_dir,label_dir,calib_dir, val_ratio = 0.2, seed = 0):
 
   
     
-################################## Tester Co
+#---------------------------------Tester Code---------------------------------#
 
 if __name__ == "__main__":    
     train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  

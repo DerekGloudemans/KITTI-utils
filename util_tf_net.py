@@ -28,29 +28,9 @@ import copy
 import matplotlib.pyplot as plt
 import math
 
-#--------------------------- Definitions section -----------------------------#
-class Dataset():
-    """
-    Defines dataset and transforms for training or validation data. 
-    """
-    def __init__(self, X,Y):
-        self.X = X
-        self.Y = Y
-    
-    def __len__(self):
-        #Denotes the total number of samples
-        return len(self.X) 
+from util_tf_labels import *
 
-    def __getitem__(self, index):
-        x = self.X[index,:]
-        y = self.Y[index,:]
-        
-        # convert to Tensor
-        x = torch.from_numpy(x).float()
-        y = torch.from_numpy(y).float()
-
-        return x, y
-        
+#--------------------------- Definitions section -----------------------------#        
 class FcNet(nn.Module):
     """
     Defines a simple fully connected network with 2 hidden layers
@@ -64,8 +44,8 @@ class FcNet(nn.Module):
         super(FcNet, self).__init__()
 
         # get size of some layers
-        start_num = 19
-        max_num = 400
+        start_num = 36
+        max_num = 200
         mid_num = 50
         end_num = 8
         
@@ -89,58 +69,7 @@ class FcNet(nn.Module):
         
         return out
 
-def create_label_dataset(im_dir,label_dir,calib_dir,test_type = "frame", holdout = 0.15):
-    """
-    Generates a dataset of original camera-space and transformed image-space labels
-    label_dir - string, the directory of examples (for KITTI use training labels, though
-                this data will be used for both training and testing)
-    test_type - string from ["frame", "sequence"], if frame, holdout proportion of random 
-                objects are used as test holdout. If sequence, 3 random sequences are used as holdout
-    holdout - float, percentage of data for frame holdout
-    """
-        
-    camera_space_labels = []
-    image_space_labels = []
-    
-    data = Track_Dataset(im_dir,label_dir,calib_dir)    
-    for i in range(0, len(data.label_list)):
-        
-        data.load_track(i)
-        labels = data.labels
-        P = data.calib
-        
-        # each item in labels is a det_dir corresponding to one label
-        for frame in labels:
-            for det_dict in frame:
-                if det_dict['class'] not in ["dontcare","DontCare"]:
-                    # get camera space coords
-                    X = det_dict['pos'][0]
-                    Y = det_dict['pos'][1]
-                    Z = det_dict['pos'][2]
-                    h = det_dict['dim'][0]
-                    w = det_dict['dim'][1]
-                    l = det_dict['dim'][2]
-                    alpha = det_dict['alpha']
-                    rot_y = det_dict['rot_y']
-                    camera_space = np.array([X,Y,Z,h,w,l,alpha,rot_y])
-                    
-                    #get image space coords
-                    tf_coords = get_coords_3d(det_dict,P)[0].reshape([16])
-                    dist = np.sqrt(X**2 + Y**2 + Z**2)
-                    h_ratio = h/dist
-                    w_ratio = w/dist
-                    l_ratio = l/dist
-                    image_space = np.array([item for item in tf_coords] + [h_ratio, w_ratio, l_ratio])
-                    
-                    # remove examples behind camera
-                    if X > 0 and det_dict['truncation'] == 0:
-                        camera_space_labels.append(camera_space)
-                        image_space_labels.append(image_space)
-            
-    image_space_labels = np.asarray(image_space_labels)
-    camera_space_labels = np.asarray(camera_space_labels)
-    return image_space_labels,camera_space_labels
-            
+
         
     
 
@@ -153,7 +82,6 @@ def test_output(data,idx,model):
     x,y = data[idx]
     out = model(x)
     return y.data.cpu().numpy(), out.data.cpu().numpy()
-    
     
     
 def train_model(model, criterion, optimizer, scheduler, 
@@ -215,7 +143,7 @@ def train_model(model, criterion, optimizer, scheduler,
     
                 # verbose update
                 count += 1
-                if count % 20 == 0:
+                if False and count % 20 == 0:
                     print("loss: {}".format(loss.item()))
                     
             epoch_loss = running_loss / dataset_sizes[phase]
@@ -251,39 +179,7 @@ def train_model(model, criterion, optimizer, scheduler,
     model.load_state_dict(best_model_wts)
     return model
 
-def encode_frame_labels(label):
-    # each item in labels is a det_dir corresponding to one label
-    image_space_labels = []
-    camera_space_labels = []
-    for det_dict in label:
-        if det_dict['class'] not in ["dontcare","DontCare"]:
-            # get camera space coords
-            X = det_dict['pos'][0]
-            Y = det_dict['pos'][1]
-            Z = det_dict['pos'][2]
-            h = det_dict['dim'][0]
-            w = det_dict['dim'][1]
-            l = det_dict['dim'][2]
-            alpha = det_dict['alpha']
-            rot_y = det_dict['rot_y']
-            camera_space = np.array([X,Y,Z,h,w,l,alpha,rot_y])
-            
-            #get image space coords
-            tf_coords = get_coords_3d(det_dict,P).reshape([16])
-            dist = np.sqrt(X**2 + Y**2 + Z**2)
-            h_ratio = h/dist
-            w_ratio = w/dist
-            l_ratio = l/dist
-            image_space = np.array([item for item in tf_coords] + [h_ratio, w_ratio, l_ratio])
-            
-            # remove examples behind camera
-            if X > 0 :
-                camera_space_labels.append(camera_space)
-                image_space_labels.append(image_space)
-        
-    image_space_labels = np.asarray(image_space_labels)
-    camera_space_labels = np.asarray(camera_space_labels)
-    return image_space_labels,camera_space_labels        
+   
         
 #------------------------------ Main code here -------------------------------#
 if __name__ == "__main__":
@@ -293,61 +189,28 @@ if __name__ == "__main__":
         pass
     
     # use this to watch gpu in console            watch -n 2 nvidia-smi
-
     # CUDA for PyTorch
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda:0" if use_cuda else "cpu")
     torch.cuda.empty_cache()
 
+
     # input files and variables
-    random.seed = 0
+    seed = 0
+    random.seed = seed
     val_ratio = 0.2
-    x_path = "C:\\Users\\derek\\OneDrive\\Documents\\Derek's stuff\\Not Not School\\Lab\\Code\\KITTI-utils\\label_dataset\\X.npy"
-    y_path = "C:\\Users\\derek\\OneDrive\\Documents\\Derek's stuff\\Not Not School\\Lab\\Code\\KITTI-utils\\label_dataset\\Y.npy"
+    num_epochs = 500
     checkpoint_file = None
-    
-    
-    # split data into train and test data
-    X = np.load(x_path)
-    Y = np.load(y_path)
-    n_examples = len(X)
-    
-    idxs = [i for i in range(0,n_examples)]
-    random.shuffle(idxs)
-    split_idx = int(n_examples * (1-val_ratio))
-    train_idx = idxs[0:split_idx]
-    test_idx = idxs[split_idx:]
-    
-    X_train = X[train_idx,:]
-    X_test = X[test_idx,:]
-    Y_train = Y[train_idx,:]
-    Y_test = Y[test_idx,:]  
-    
-    # normalize by subtracting min value, dividing by range
-    if True:
-        X_min = np.min(X,0)
-        Y_min = np.min(Y,0)
-        X_avg = np.average(X,0)
-        Y_avg = np.average(Y,0)
-        X_max = np.max(X,0)
-        Y_max = np.max(Y,0)
-        X_train = (X_train -X_min[None,:])  /(X_avg)[None,:]
-        X_test =  (X_test  -X_min[None,:])  / (X_avg)[None,:]
-        Y_train = (Y_train -Y_min[None,:])  / (Y_avg)[None,:]
-        Y_test =  (Y_test   -Y_min[None,:]) / (Y_avg)[None,:]
-    
-    
-    # TODO = fix this create training params
+    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
+    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
+    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
     params = {'batch_size': 32,
               'shuffle': True,
               'num_workers': 0}
-    num_epochs = 100
     
     
     
-   
-    train_data = Dataset(X_train,Y_train)
-    test_data = Dataset(X_test,Y_test)
+    train_data,test_data,camera_space = create_datasets(train_im_dir,train_lab_dir,train_calib_dir,val_ratio,seed) 
     trainloader = data.DataLoader(train_data, **params)
     testloader = data.DataLoader(test_data, **params)
     print("Got dataloaders.")
@@ -363,10 +226,10 @@ if __name__ == "__main__":
         model.load_state_dict(checkpoint['model_state_dict'])
     
     # define loss function
-    criterion = nn.MSELoss()
+    #criterion = nn.MSELoss()
     criterion = nn.SmoothL1Loss()
     # all parameters are being optimized, not just fc layer
-    optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = optim.Adam(model.parameters(), lr=0.01)
     
     # Decay LR by a factor of 0.1 every 7 epochs
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
@@ -396,68 +259,5 @@ if __name__ == "__main__":
     
     torch.cuda.empty_cache()
 
-
-
-############################
-
-    from track_loader import *
-    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
-    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
-    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
-    
-    #train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
-    #train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
-    #train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
-    
-    test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-    test.load_track(0)    
-    im,label = next(test)
-    P = test.calib
-    while im:
-        
-        cv_im = pil_to_cv(im)
-        if True:
-            cv_im = plot_bboxes_3d(cv_im,label,test.calib)
-            
-            #get transformed labels
-            X,Y = encode_frame_labels(label)
-            X = (X -X_min[None,:])  /(X_max-X_min)[None,:]
-            Y = (Y -Y_min[None,:])  / (Y_max-Y_min)[None,:]
-            X = torch.from_numpy(X).float().to(device)
-            Y_pred = model(X)
-            Y_pred = Y_pred.data.cpu().numpy()
-            
-            # un-normalize labels
-            #X = X * (X_max-X_min)[None,:] +X_min[None,:] 
-            Y_pred = Y_pred * (Y_max-Y_min)[None,:] +Y_min[None,:]
-            
-            # convert into det_dict form
-            new_label = []
-            i = 0
-            for det_dict in label:
-                    if det_dict['class'] not in ["DontCare" , "dontcare"] and det_dict['pos'][0] > 0: 
-                        det_dict['pos'][0] = Y_pred[i,0]
-                        det_dict['pos'][1] = Y_pred[i,1]
-                        det_dict['pos'][2] = Y_pred[i,2]
-                        det_dict['dim'][0] = Y_pred[i,3]
-                        det_dict['dim'][1] = Y_pred[i,4]
-                        det_dict['dim'][2] = Y_pred[i,5]
-                        det_dict['alpha']  = Y_pred[i,6]
-                        det_dict['rot_y']  = Y_pred[i,7]
-                        det_dict['class'] = "Tram" 
-                        new_label.append(det_dict)
-                        i = i+1
-                        
-            cv_im = plot_bboxes_3d(cv_im,new_label,test.calib)
-            
-        cv2.imshow("Frame",cv_im)
-        key = cv2.waitKey(1) & 0xff
-        #time.sleep(1/30.0)
-        if key == ord('q'):
-            break
-        
-        # load next frame
-        im,label = next(test)
-
-    
-    cv2.destroyAllWindows()
+    print(test_output(train_data,25,model))
+  
