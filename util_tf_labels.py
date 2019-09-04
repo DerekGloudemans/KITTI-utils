@@ -220,8 +220,16 @@ def im_to_cam_space(pts_2d,pts_depth,P):
     pts_depth - 1 x 8 numpy array with depth in z direction (predicted by network)
     P - 3 x 4 camera calibration matrix
     """
+    
+    # scale pts_2d by pts_depth
+    pts_2d[0,:] = np.multiply(pts_2d[0,:],pts_depth)
+    pts_2d[1,:] = np.multiply(pts_2d[1,:],pts_depth)
+
+    
     P_inv = np.linalg.inv(P[:,0:3])
     pts_2d = np.concatenate((pts_2d,pts_depth),0)
+    
+    
     
     pts_3d = np.matmul(P_inv,pts_2d)
     return pts_3d
@@ -239,7 +247,7 @@ def label_conversion(model,label,P,im_size):
     for det_dict in label:
         if det_dict['class'] not in ['DontCare', 'dontcare']:
             # get image coords
-            coords, temp = get_coords_3d(det_dict,P)
+            coords, real_depth, real_3d = get_coords_3d(det_dict,P)
             X = get_image_space_features(coords,P,im_size)
             X = torch.from_numpy(X).float()
             
@@ -247,7 +255,7 @@ def label_conversion(model,label,P,im_size):
             pred_depths = (model(X).data.cpu().numpy())[None,:]*100
             
             # convert into camera space again
-            pts_3d = im_to_cam_space(coords,temp[None,:],P)
+            pts_3d = im_to_cam_space(coords,real_depth[None,:],P)
             
             X = np.average(pts_3d[0])
             Y = np.average(pts_3d[1])

@@ -252,7 +252,7 @@ def get_coords_3d(det_dict,P):
     pts_2d[1,:] = pts_2d[1,:] / pts_2d[2,:] 
     
     # apply camera space rotation here?
-    return pts_2d[:2,:] ,pts_2d[2,:]
+    return pts_2d[:2,:] ,pts_2d[2,:], rotated_corners
 
     
 def draw_prism(im,coords,color):
@@ -311,7 +311,7 @@ def plot_bboxes_3d(im,label,P):
         cls = label[i]['class']
         idnum = label[i]['id']
         if cls != "DontCare":
-            bbox_3d,_ = get_coords_3d(label[i],P)
+            bbox_3d,_,_ = get_coords_3d(label[i],P)
             cv_im = draw_prism(cv_im,bbox_3d,class_colors[cls])
             plot_text(cv_im,(bbox_3d[0,4],bbox_3d[1,4]),cls,idnum,class_colors)
     return cv_im
