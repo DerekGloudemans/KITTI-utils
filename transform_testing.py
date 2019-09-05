@@ -44,8 +44,8 @@ if __name__ == "__main__":
     seed = 0
     random.seed = seed
     val_ratio = 0.2
-    num_epochs = 500
-    checkpoint_file = "ltf_L1_140.pt"
+    num_epochs = 300
+    checkpoint_file =  "ltf_3Dpt_140.pt" #"ltf_L1_80.pt"
     train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
     train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
     train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
@@ -81,7 +81,8 @@ if __name__ == "__main__":
     print("Got model.")
     # define loss function
     #criterion = nn.MSELoss()
-    criterion = nn.SmoothL1Loss()
+    #criterion = nn.SmoothL1Loss()
+    criterion = Point_Loss()
     
     # all parameters are being optimized, not just fc layer
     optimizer = optim.Adam(model.parameters(), lr=0.01)
@@ -90,7 +91,7 @@ if __name__ == "__main__":
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     
     # define start epoch for consistent labeling if checkpoint is reloaded
-    start_epoch = 0
+    start_epoch = 90
             
     # group dataloaders
     dataloaders = {"train":trainloader, "val": testloader}
@@ -101,7 +102,7 @@ if __name__ == "__main__":
     # train model
         print("Beginning training.")
         model = train_model(model, criterion, optimizer, 
-                            exp_lr_scheduler, dataloaders,datasizes,
+                            exp_lr_scheduler, dataloaders,datasizes, device,
                             num_epochs, start_epoch)
         
     
@@ -113,7 +114,7 @@ if __name__ == "__main__":
 
 # test plot
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(10)
+test.load_track(13)
 
 
 
@@ -131,7 +132,7 @@ while im:
         
     cv2.imshow("Frame",cv_im)
     key = cv2.waitKey(1) & 0xff
-    #time.sleep(1/30.0)
+    time.sleep(1/50.0)
     if key == ord('q'):
         break
     

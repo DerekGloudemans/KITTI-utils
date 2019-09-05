@@ -308,7 +308,7 @@ def plot_bboxes_3d(im,label,P, style = "normal"):
             'DontCare': (200,200,200)}
     
     for i in range (0,len(label)):
-        if True: #label[i]['pos'][2] > 0.5 and label[i]['truncation'] < 2:
+        if label[i]['pos'][2] > 2 and label[i]['truncation'] < 1:
             cls = label[i]['class']
             idnum = label[i]['id']
             if cls != "DontCare":
@@ -331,7 +331,7 @@ if __name__ == "__main__":
     #train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
     
     test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-    test.load_track(3)
+    test.load_track(18)
     
     
     

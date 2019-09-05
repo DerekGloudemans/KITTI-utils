@@ -84,7 +84,7 @@ def create_xy_labels(im_dir,label_dir,calib_dir):
                     image_space = get_image_space_features(tf_coords,P,im_size)
                     
                     # remove examples behind camera
-                    if Z > 0 and det_dict['truncation'] < 2:
+                    if Z > 2 and det_dict['truncation'] < 2:
                         camera_space_labels.append(camera_space)
                         image_space_labels.append(image_space)
                         depth_labels.append(tf_depths)

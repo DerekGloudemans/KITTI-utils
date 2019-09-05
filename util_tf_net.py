@@ -85,7 +85,7 @@ def test_output(data,idx,model):
     
     
 def train_model(model, criterion, optimizer, scheduler, 
-                dataloaders,dataset_sizes, num_epochs=5, start_epoch = 0):
+                dataloaders,dataset_sizes,device, num_epochs=5, start_epoch = 0):
     """
     Alternates between a training step and a validation step at each epoch. 
     Validation results are reported but don't impact model weights
@@ -94,6 +94,7 @@ def train_model(model, criterion, optimizer, scheduler,
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_loss = np.inf
+    best_epoch = 0
     for epoch in range(start_epoch,num_epochs):
         print('Epoch {}/{}'.format(epoch+1, num_epochs))
         print('-' * 10)
@@ -122,9 +123,16 @@ def train_model(model, criterion, optimizer, scheduler,
                 with torch.set_grad_enabled(phase == 'train'):
                     Y_pred = model(X)
                 
-                    # note that the classification loss is done using class-wise probs rather 
-                    # than a single class label?
-                    loss = criterion(Y_pred,Y)
+
+                    if type(criterion) == Point_Loss:
+                        pts_2d = X[:,:16].view(-1,2,8).to(device)
+                        P = np.array([[721.5377,0,609.5593],[0,721.5377,172.8540],[0,0,1]])
+                        Pinv = torch.from_numpy(np.linalg.inv(P)).float().to(device)
+                        
+                        loss = criterion(Y_pred,Y,Pinv,pts_2d,device)
+                        
+                    else:
+                        loss = criterion(Y_pred,Y)
                     
                     # backward + optimize only if in training phase
                     if phase == 'train':
@@ -155,6 +163,7 @@ def train_model(model, criterion, optimizer, scheduler,
             # deep copy the model
             if phase == 'val' and epoch_loss < best_loss:
                 best_loss = epoch_loss
+                best_epoch = epoch
                 del best_model_wts
                 best_model_wts = copy.deepcopy(model.state_dict())
 
@@ -173,11 +182,37 @@ def train_model(model, criterion, optimizer, scheduler,
     time_elapsed = time.time() - start
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
-    print('Best val loss: {:4f}'.format(best_loss))
+    print('Best val loss: {:4f}, epoch {}'.format(best_loss,best_epoch))
 
     # load best model weights
     model.load_state_dict(best_model_wts)
     return model
+
+
+class Point_Loss(nn.Module):        
+    def __init__(self):
+        super(Point_Loss,self).__init__()
+        
+    def forward(self,output,target,Pinv,pts_2d,device):
+        """ Assumes Pinv and pts_2d are tensors"""
+        
+        # concatenate a third row of ones with pts_2d
+        ones = torch.ones((pts_2d.shape[0],1,pts_2d.shape[-1])).to(device)
+        pts_2d = torch.cat((pts_2d,ones),1)
+        
+        # multiply pts_2d by output and target, respectively
+        output = output.unsqueeze(1)
+        target = target.unsqueeze(1)
+        out_scaled = torch.mul(pts_2d,output)
+        targ_scaled = torch.mul(pts_2d,target)
+    
+        
+        # multiply each result by Pinv
+        Pinv = torch.stack([Pinv for i in range(0,targ_scaled.shape[0])])
+        out_3d = torch.bmm(Pinv,out_scaled)
+        targ_3d = torch.bmm(Pinv,targ_scaled)
+        loss = nn.MSELoss()
+        return loss(out_3d,targ_3d)
 
    
         
@@ -199,7 +234,7 @@ if __name__ == "__main__":
     seed = 0
     random.seed = seed
     val_ratio = 0.2
-    num_epochs = 500
+    num_epochs = 250
     checkpoint_file = "pts_L1_140.pt"
     train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
     train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
@@ -227,7 +262,9 @@ if __name__ == "__main__":
     
     # define loss function
     #criterion = nn.MSELoss()
-    criterion = nn.SmoothL1Loss()
+    #criterion = nn.SmoothL1Loss()
+    criterion = Point_Loss()
+    
     # all parameters are being optimized, not just fc layer
     optimizer = optim.Adam(model.parameters(), lr=0.01)
     
@@ -253,7 +290,7 @@ if __name__ == "__main__":
     # train model
         print("Beginning training.")
         model = train_model(model, criterion, optimizer, 
-                            exp_lr_scheduler, dataloaders,datasizes,
+                            exp_lr_scheduler, dataloaders,datasizes, device,
                             num_epochs, start_epoch)
         
     
