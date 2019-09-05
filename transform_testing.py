@@ -44,8 +44,8 @@ if __name__ == "__main__":
     seed = 0
     random.seed = seed
     val_ratio = 0.2
-    num_epochs = 300
-    checkpoint_file =  "ltf_3Dpt_140.pt" #"ltf_L1_80.pt"
+    num_epochs = 100
+    checkpoint_file = "ltf_3Dpt_50_calibrated.pt"
     train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
     train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
     train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
     
     # define start epoch for consistent labeling if checkpoint is reloaded
-    start_epoch = 90
+    start_epoch = 0
             
     # group dataloaders
     dataloaders = {"train":trainloader, "val": testloader}
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
 # test plot
 test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(13)
+test.load_track(0)
 
 
 
@@ -124,7 +124,7 @@ while im:
     
     cv_im = pil_to_cv(im)
     if True:
-        cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
+#        cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
         
         # try conversion
         out = label_conversion(model,label,test.calib,im.size)

@@ -126,8 +126,13 @@ def train_model(model, criterion, optimizer, scheduler,
 
                     if type(criterion) == Point_Loss:
                         pts_2d = X[:,:16].view(-1,2,8).to(device)
-                        P = np.array([[721.5377,0,609.5593],[0,721.5377,172.8540],[0,0,1]])
-                        Pinv = torch.from_numpy(np.linalg.inv(P)).float().to(device)
+                        P = (X[:,-12:].view(-1,3,4))[:,:,:3] * 1000
+                        Pinv = torch.inverse(P)
+                        Pinv.requires_grad = False
+                        
+                        # extract and invert each P matrix dumbly
+                        P2 = np.array([[721.5377,0,609.5593],[0,721.5377,172.8540],[0,0,1]])
+                        Pinv_test = torch.from_numpy(np.linalg.inv(P2)).float().to(device)
                         
                         loss = criterion(Y_pred,Y,Pinv,pts_2d,device)
                         
@@ -206,12 +211,10 @@ class Point_Loss(nn.Module):
         out_scaled = torch.mul(pts_2d,output)
         targ_scaled = torch.mul(pts_2d,target)
     
-        
         # multiply each result by Pinv
-        Pinv = torch.stack([Pinv for i in range(0,targ_scaled.shape[0])])
         out_3d = torch.bmm(Pinv,out_scaled)
         targ_3d = torch.bmm(Pinv,targ_scaled)
-        loss = nn.MSELoss()
+        loss = nn.SmoothL1Loss()#MSELoss()
         return loss(out_3d,targ_3d)
 
    
