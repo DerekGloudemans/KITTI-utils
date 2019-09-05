@@ -112,32 +112,44 @@ if __name__ == "__main__":
 
 
 
-# test plot
-test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-test.load_track(0)
-
-
-
-im,label = next(test)
-
-while im:
+    #-------------------------------- test plot ----------------------------------#
+    test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
     
-    cv_im = pil_to_cv(im)
-    if True:
-#        cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
+    track_num = 1
+    test.load_track(track_num)
+    file_out = None# "converted_track{}.avi".format(track_num)
         
-        # try conversion
-        out = label_conversion(model,label,test.calib,im.size)
-        cv_im = plot_bboxes_3d(cv_im,out,test.calib)
-        
-    cv2.imshow("Frame",cv_im)
-    key = cv2.waitKey(1) & 0xff
-    time.sleep(1/50.0)
-    if key == ord('q'):
-        break
-    
-    # load next frame
+    # load first frame
     im,label = next(test)
-
     
-cv2.destroyAllWindows()
+    # opens VideoWriter object for saving video file if necessary
+    if file_out:
+        writer = cv2.VideoWriter(file_out,cv2.CAP_FFMPEG,cv2.VideoWriter_fourcc('M','P','E','G'), 30.0, im.size)
+    
+    while im:
+        
+        cv_im = pil_to_cv(im)
+        if True:
+    #        cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
+            
+            # try conversion
+            out = label_conversion(model,label,test.calib,im.size)
+            cv_im = plot_bboxes_3d(cv_im,out,test.calib)
+           
+        if file_out:
+            writer.write(cv_im)
+        
+        cv2.imshow("Frame",cv_im)
+        key = cv2.waitKey(1) & 0xff
+        time.sleep(1/50.0)
+        if key == ord('q'):
+            break
+        
+        # load next frame
+        im,label = next(test)
+    
+    try:
+        writer.release()
+    except:
+        pass
+    cv2.destroyAllWindows()
