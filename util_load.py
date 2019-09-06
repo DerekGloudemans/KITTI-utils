@@ -317,7 +317,7 @@ def plot_bboxes_3d(im,label,P, style = "normal"):
                     cv_im = draw_prism(cv_im,bbox_3d,(255,255,255))
                 else:
                     cv_im = draw_prism(cv_im,bbox_3d,class_colors[cls])
-                plot_text(cv_im,(bbox_3d[0,4],bbox_3d[1,4]),cls,idnum,class_colors)
+                    plot_text(cv_im,(bbox_3d[0,4],bbox_3d[1,4]),cls,idnum,class_colors)
     return cv_im
 
  ################################# Tester Code ################################    

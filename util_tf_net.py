@@ -176,7 +176,7 @@ def train_model(model, criterion, optimizer, scheduler,
         
         if epoch % 10 == 0:
             # save checkpoint
-            PATH = "label_convert_{}.pt".format(epoch)
+            PATH = "checkpoints/label_convert_{}.pt".format(epoch)
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),

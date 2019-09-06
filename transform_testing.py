@@ -45,7 +45,7 @@ if __name__ == "__main__":
     random.seed = seed
     val_ratio = 0.2
     num_epochs = 100
-    checkpoint_file = "ltf_3Dpt_50_calibrated.pt"
+    checkpoint_file = "checkpoints/ltf_3Dpt_80_calibrated.pt"
     train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
     train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
     train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
@@ -115,9 +115,9 @@ if __name__ == "__main__":
     #-------------------------------- test plot ----------------------------------#
     test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
     
-    track_num = 1
+    track_num = 10
     test.load_track(track_num)
-    file_out = None# "converted_track{}.avi".format(track_num)
+    #file_out =  "converted_track{}.avi".format(track_num)
         
     # load first frame
     im,label = next(test)
@@ -130,7 +130,7 @@ if __name__ == "__main__":
         
         cv_im = pil_to_cv(im)
         if True:
-    #        cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
+            cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
             
             # try conversion
             out = label_conversion(model,label,test.calib,im.size)
