@@ -117,7 +117,7 @@ if __name__ == "__main__":
     
     track_num = 10
     test.load_track(track_num)
-    #file_out =  "converted_track{}.avi".format(track_num)
+    file_out =  None #"converted_track{}.avi".format(track_num)
         
     # load first frame
     im,label = next(test)
