@@ -46,9 +46,12 @@ if __name__ == "__main__":
     val_ratio = 0.2
     num_epochs = 100
     checkpoint_file = "checkpoints/ltf_3Dpt_80_calibrated.pt"
-    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
-    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
-    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
+#    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
+#    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
+#    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
+    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
+    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
     params = {'batch_size': 32,
               'shuffle': True,
               'num_workers': 0}
@@ -133,7 +136,7 @@ if __name__ == "__main__":
             cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
             
             # try conversion
-            out = label_conversion(model,label,test.calib,im.size)
+            out = label_conversion(model,label,test.calib,im.size,device)
             cv_im = plot_bboxes_3d(cv_im,out,test.calib)
            
         if file_out:

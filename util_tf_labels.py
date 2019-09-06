@@ -54,7 +54,7 @@ def create_xy_labels(im_dir,label_dir,calib_dir):
     depth_labels = []
     data = Track_Dataset(im_dir,label_dir,calib_dir)    
     for i in range(0, len(data.label_list)):
-        
+        print(i,len(data.label_list))
         data.load_track(i)
         im,_ = next(data)
         im_size = im.size[:2]
@@ -234,7 +234,7 @@ def im_to_cam_space(pts_2d,pts_depth,P):
     pts_3d = np.matmul(P_inv,pts_2d)
     return pts_3d
 
-def label_conversion(model,label,P,im_size):
+def label_conversion(model,label,P,im_size,device):
     """ Takes in one label (bboxes for one frame). For each, converts into 
         image space, uses network to predict camera_space, and averages out points 
         to create best fit 3d bounding box. Returns a list of det_dict objects
@@ -249,7 +249,7 @@ def label_conversion(model,label,P,im_size):
             # get image coords
             coords, real_depth, real_3d = get_coords_3d(det_dict,P)
             X = get_image_space_features(coords,P,im_size)
-            X = torch.from_numpy(X).float()
+            X = torch.from_numpy(X).float().to(device)
             
             # model output depths
             pred_depths = (model(X).data.cpu().numpy())[None,:]*100
