@@ -44,7 +44,7 @@ class FcNet(nn.Module):
         super(FcNet, self).__init__()
 
         # get size of some layers
-        start_num = 36
+        start_num = 48
         max_num = 200
         mid_num = 50
         end_num = 8
@@ -52,11 +52,11 @@ class FcNet(nn.Module):
         # define regressor
         self.regress = nn.Sequential(
                           nn.Linear(start_num,max_num,bias=True),
-                          nn.ReLU(),
+                          nn.Sigmoid(),
                           nn.Linear(max_num,mid_num,bias = True),
-                          nn.ReLU(),
+                          nn.Sigmoid(),
                           nn.Linear(mid_num,end_num, bias = True),
-                          nn.ReLU()
+                          nn.Sigmoid()
                           )
 
     def forward(self, x):

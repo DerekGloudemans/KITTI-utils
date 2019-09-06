@@ -44,14 +44,14 @@ if __name__ == "__main__":
     seed = 0
     random.seed = seed
     val_ratio = 0.2
-    num_epochs = 100
-    checkpoint_file = "checkpoints/ltf_3Dpt_80_calibrated.pt"
-#    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
-#    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
-#    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
-    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
-    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
-    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
+    num_epochs = 150
+    checkpoint_file = None#"ltf_3D_pt_lwh_90.pt"
+    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
+    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
+    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
+#    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
+#    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+#    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
     params = {'batch_size': 32,
               'shuffle': True,
               'num_workers': 0}
@@ -117,8 +117,8 @@ if __name__ == "__main__":
 
     #-------------------------------- test plot ----------------------------------#
     
-    track_num = 2
-    file_out =  "converted_track{}.avi".format(track_num)
+    track_num = 0
+    file_out =  None#"converted_track{}.avi".format(track_num)
     test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
     
     if True:

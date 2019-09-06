@@ -115,30 +115,46 @@ def get_image_space_features(tf_coords,P,im_size):
     P_flat = P.reshape(12)
     c = tf_coords # shorten name for expressions below
     dist = lambda x1,y1,x2,y2: np.sqrt((x1-x2)**2 + (y1-y2)**2)
+    
     # get a bunch of ratios in terms of image_space
-    fhr = dist(c[0],c[8],c[4],c[12])  / dist(c[1],c[9],c[5],c[13])
+    fhr = dist(c[0],c[8],c[4],c[12])  / dist(c[1],c[9],c[5],c[13]) #front height ratio
     fwr = dist(c[0],c[8],c[1],c[9])   / dist(c[4],c[12],c[5],c[13])
     tlr = dist(c[0],c[8],c[3],c[11])  / dist(c[1],c[9],c[2],c[10])
     blr = dist(c[4],c[12],c[7],c[15]) / dist(c[5],c[13],c[6],c[14])
     rhr = dist(c[3],c[11],c[7],c[15]) / dist(c[2],c[10],c[6],c[14])
     rwr = dist(c[3],c[11],c[2],c[10]) / dist(c[7],c[15],c[6],c[14])
-    
     lw  = (dist(c[0],c[8],c[3],c[11]) + dist(c[1],c[9],c[2],c[10])) / \
     (dist(c[3],c[11],c[2],c[10]) + dist(c[0],c[8],c[1],c[9]) )
-    
     lh  = (dist(c[0],c[8],c[3],c[11]) + dist(c[1],c[9],c[2],c[10])) / \
     (dist(c[3],c[11],c[7],c[15]) + dist(c[2],c[10],c[6],c[14]))
     
     ratios = [fhr,fwr,tlr,blr,rhr,rwr,lw,lh]
     
+    l1 = dist(c[0],c[8],c[3],c[11])
+    l2 = dist(c[1],c[9],c[2],c[10])
+    l3 = dist(c[4],c[12],c[7],c[15])
+    l4 = dist(c[5],c[13],c[6],c[14])
+    w1 = dist(c[0],c[8],c[1],c[9])
+    w2 = dist(c[3],c[11],c[2],c[10])
+    w3 = dist(c[4],c[12],c[5],c[13])
+    w4 = dist(c[6],c[14],c[7],c[15])
+    h1 = dist(c[0],c[8],c[4],c[12])
+    h2 = dist(c[1],c[9],c[5],c[13])
+    h3 = dist(c[2],c[10],c[6],c[14])
+    h4 = dist(c[3],c[11],c[7],c[15])
+    
+    dists = [l1,l2,l3,l4,w1,w2,w3,w4,h1,h2,h3,h4]
+    
     # normalize ratios by dividing by 10
     ratios = [j/2 for j in ratios]
+    # normalize distances by dividing by 1000
+    dists = [l/1000 for l in dists]
     # normalize P by dividing by 1000
     P_flat = [k/1000 for k in P_flat]
     # normalize coords by dividing by image size
     tf_coords = tf_coords.reshape(8,2) / im_size
     tf_coords = tf_coords.reshape(16)
-    ret = np.array([i for i in tf_coords] + [j for j in ratios] + [k for k in P_flat])
+    ret = np.array([i for i in tf_coords] + [j for j in ratios] + [l for l in dists] + [k for k in P_flat])
     return ret
     
     
