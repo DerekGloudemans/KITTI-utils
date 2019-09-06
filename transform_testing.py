@@ -44,14 +44,16 @@ if __name__ == "__main__":
     seed = 0
     random.seed = seed
     val_ratio = 0.2
-    num_epochs = 150
-    checkpoint_file = None#"ltf_3D_pt_lwh_90.pt"
-    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
-    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
-    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
-#    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
-#    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
-#    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
+    num_epochs = 300
+    checkpoint_file = "checkpoints/sigmoid_3d_280.pt"
+    
+#    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
+#    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
+#    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
+    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
+    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
+    
     params = {'batch_size': 32,
               'shuffle': True,
               'num_workers': 0}
@@ -118,42 +120,48 @@ if __name__ == "__main__":
     #-------------------------------- test plot ----------------------------------#
     
     track_num = 0
-    file_out =  None#"converted_track{}.avi".format(track_num)
+    file_out =  "converted_track{}.avi".format(track_num)
     test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
     
+    test.load_track(track_num)
+    
+    # load first frame
+    im,label = next(test)
+    
+    
+    # opens VideoWriter object for saving video file if necessary
+    if file_out:
+        writer = cv2.VideoWriter(file_out,cv2.CAP_FFMPEG,cv2.VideoWriter_fourcc('M','P','E','G'), 15.0, im.size)
+    
     if True:
-        test.load_track(track_num)
-        
+        for track_num in range(len(test)):
+            test.load_track(track_num)
             
-        # load first frame
-        im,label = next(test)
-        
-        # opens VideoWriter object for saving video file if necessary
-        if file_out:
-            writer = cv2.VideoWriter(file_out,cv2.CAP_FFMPEG,cv2.VideoWriter_fourcc('M','P','E','G'), 15.0, im.size)
-        
-        while im:
+            # load first frame
+            im,label = next(test)  
             
-            cv_im = pil_to_cv(im)
-            if True:
-                cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
+            while im:
                 
-                # try conversion
-                out = label_conversion(model,label,test.calib,im.size,device)
-                cv_im = plot_bboxes_3d(cv_im,out,test.calib)
-               
-            if file_out:
-                writer.write(cv_im)
+                cv_im = pil_to_cv(im)
+                if True:
+                    cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
+                    
+                    # try conversion
+                    out = label_conversion(model,label,test.calib,im.size,device)
+                    cv_im = plot_bboxes_3d(cv_im,out,test.calib)
+                   
+                if file_out:
+                    writer.write(cv_im)
+                
+                cv2.imshow("Frame",cv_im)
+                key = cv2.waitKey(1) & 0xff
+                time.sleep(1/50.0)
+                if key == ord('q'):
+                    break
+                
+                # load next frame
+                im,label = next(test)
             
-            cv2.imshow("Frame",cv_im)
-            key = cv2.waitKey(1) & 0xff
-            time.sleep(1/50.0)
-            if key == ord('q'):
-                break
-            
-            # load next frame
-            im,label = next(test)
-        
         try:
             writer.release()
         except:
@@ -162,4 +170,4 @@ if __name__ == "__main__":
 
     if False:
         # generate converted KITTI file set
-        label_convert_track(test,model,out_directory = "transformed_label_test_KITTI")
+        label_convert_track(test,model,out_directory = "transformed_label_test_sigmoid")

@@ -162,7 +162,7 @@ def train_model(model, criterion, optimizer, scheduler,
             epoch_loss = running_loss / dataset_sizes[phase]
             
 
-            print('{} Loss: {:.4f}'.format(
+            print('{} Loss: {:.5f}'.format(
                 phase, epoch_loss))
 
             # deep copy the model
