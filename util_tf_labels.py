@@ -14,6 +14,8 @@ import torch
 # always good to have
 import numpy as np    
 import random
+import os
+import re
 
 from util_load import Track_Dataset, get_coords_3d
 
@@ -54,7 +56,6 @@ def create_xy_labels(im_dir,label_dir,calib_dir):
     depth_labels = []
     data = Track_Dataset(im_dir,label_dir,calib_dir)    
     for i in range(0, len(data.label_list)):
-        print(i,len(data.label_list))
         data.load_track(i)
         im,_ = next(data)
         im_size = im.size[:2]
@@ -184,7 +185,8 @@ def get_image_space_features(tf_coords,P,im_size):
 
 def create_datasets(im_dir,label_dir,calib_dir, val_ratio = 0.2, seed = 0):
     """
-    creates datasets of tensors for PyTorch training
+    creates datasets of tensors for PyTorch training, dealing with data division
+    for training and testing
     label_dir - string, the directory of examples (for KITTI use training labels, though
                 this data will be used for both training and testing)
     calib_dir - "
@@ -239,6 +241,7 @@ def label_conversion(model,label,P,im_size,device):
         image space, uses network to predict camera_space, and averages out points 
         to create best fit 3d bounding box. Returns a list of det_dict objects
         label - list of det_dicts
+        new_label - list of det_dicts
         P - 3 x 4 numpy array, camera calibration matrix
         im_size - 2-tuple, size of image
     """
@@ -257,7 +260,8 @@ def label_conversion(model,label,P,im_size,device):
             # convert into camera space again
             pts_3d = im_to_cam_space(coords,pred_depths,P)
             #pts_3d = im_to_cam_space(coords,real_depth[None,:],P)
-
+            
+            pts_3d = np.nan_to_num(pts_3d) + 0.0001 # to deal with 0 and nan values
             
             X = np.average(pts_3d[0])
             Y = np.max(pts_3d[1])
@@ -280,11 +284,11 @@ def label_conversion(model,label,P,im_size,device):
             # find best alpha by averaging angles of all 8 relevant line segments
             # defined for line segments backwards to forwards and left to right
             ang = lambda pts,a,b: np.arctan((pts[1,b]-pts[1,a])/(pts[0,b]-pts[0,a]))
-            
             angle = (ang(pts_3d,0,1) + ang(pts_3d,3,2) + ang(pts_3d,4,5) + ang(pts_3d,7,6))/4.0 + \
                     ((ang(pts_3d,3,0) + ang(pts_3d,2,1) + ang(pts_3d,7,4) + ang(pts_3d,6,5))/4.0 - np.pi/2)
             alpha = (np.pi - angle)
-    
+            if alpha > np.pi/2.0:
+                alpha = alpha - np.pi
             # append to new label
             det_dict['pos'][0] = X
             det_dict['pos'][1] = Y
@@ -293,12 +297,108 @@ def label_conversion(model,label,P,im_size,device):
             det_dict['dim'][1] = width
             det_dict['dim'][2] = length
             det_dict['alpha'] = alpha
+        
+            # to get new 2dbbox coords, must convert to image coords
+            coords,_,_ = get_coords_3d(det_dict,P)
+            xmin = np.min(coords[0,:])
+            ymin = np.min(coords[1,:])
+            xmax = np.max(coords[0,:])
+            ymax = np.max(coords[1,:])
+            det_dict['bbox2d'] = np.array([xmin,ymin,xmax,ymax])
             
             new_label.append(det_dict)
         
     return new_label
         
+def label_convert_track(tracks, model, out_directory = "temp"):
+    """
+    Creates a new directory of KITTI-style text files, each text file corresponding
+    to the object detections for a single track after being converted into image space
+    and projected back into real-world space.
+        track - Track_Dataset object
+        device - torch.device
+        out_directory - new directory for files to be placed in
+    """    
+    device = torch.device("cuda:0" if next(model.parameters()).is_cuda else "cpu")
     
+    # create directory
+    try:
+        os.mkdir(out_directory)
+    except:
+        pass
+    
+    # for each track
+    for i in range(len(tracks)):
+        print("Converting track {}".format(i))
+        out_file = os.path.join(out_directory,"{:04d}.txt".format(i))
+        all_tracked_detections = []
+        tracks.load_track(i)
+        im,label = next(tracks)
+        
+        while im:
+            # copy don't care items as is
+#            for item in label:
+#                if item['class'] in ["DontCare","dontcare"]:
+#                    all_tracked_detections.append(det_dicts_to_kitti([item])[0])
+#            
+            # get label (list of det_dicts) and convert to list of transformed det_dicts        
+            new_label = label_conversion(model,label,tracks.calib,im.size,device)
+            kitti_label = det_dicts_to_kitti(new_label)
+            for item in kitti_label:
+                all_tracked_detections.append(item)
+
+            im,label = next(tracks)
+        
+        all_tracked_detections.sort(key = natural_keys)
+        with open(out_file,'w') as f:
+            for item in all_tracked_detections:
+                print(item,file = f)  
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [ atoi(c) for c in re.split(r'(\d+)', text) ]
+
+def det_dicts_to_kitti(label):
+    """
+    converts a list of det_dicts into a list of strings corresponding to KITTI format
+    """
+    
+    out_list = []
+    for det_dict in label:
+        list_items = [
+            det_dict['frame'],     
+            det_dict['id'],         
+            det_dict['class'],
+            det_dict['truncation'],
+            det_dict['occlusion'],
+            float(det_dict['alpha']),
+            float(det_dict['bbox2d'][0]),
+            float(det_dict['bbox2d'][1]),
+            float(det_dict['bbox2d'][2]),
+            float(det_dict['bbox2d'][3]),
+            float(det_dict['dim'][2]),
+            float(det_dict['dim'][1]),
+            float(det_dict['dim'][0]),
+            float(det_dict['pos'][0]),
+            float(det_dict['pos'][1]),
+            float(det_dict['pos'][2]),
+            float(det_dict['rot_y'])
+             # confidence, dummy value
+                ]
+        line = ""
+        for item in list_items:
+            if type(item) == float:
+                item = "{:.6f}".format(item)
+            line = line + str(item) + " "
+        out_list.append(line[:-1]) # remove final whitespace
+    return out_list
     
 #---------------------------------Tester Code---------------------------------#
 

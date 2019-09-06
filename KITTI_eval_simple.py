@@ -949,6 +949,7 @@ if __name__ == "__main__":
 
     results_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
     results_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/temp_outs"
+    results_path = "/home/worklab/Documents/KITTI-utils/transformed_label_test_KITTI"
     #results_path = ""
     gt_path = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
     mapping_path = "./data/tracking/evaluate_tracking.seqmap"

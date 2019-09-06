@@ -3,3 +3,7 @@
 
 results/
 
+
+transformed_label_test_KITTI/
+
+*.avi

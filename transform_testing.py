@@ -116,43 +116,50 @@ if __name__ == "__main__":
 
 
     #-------------------------------- test plot ----------------------------------#
+    
+    track_num = 2
+    file_out =  "converted_track{}.avi".format(track_num)
     test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
     
-    track_num = 10
-    test.load_track(track_num)
-    file_out =  None #"converted_track{}.avi".format(track_num)
+    if True:
+        test.load_track(track_num)
         
-    # load first frame
-    im,label = next(test)
-    
-    # opens VideoWriter object for saving video file if necessary
-    if file_out:
-        writer = cv2.VideoWriter(file_out,cv2.CAP_FFMPEG,cv2.VideoWriter_fourcc('M','P','E','G'), 30.0, im.size)
-    
-    while im:
-        
-        cv_im = pil_to_cv(im)
-        if True:
-            cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
             
-            # try conversion
-            out = label_conversion(model,label,test.calib,im.size,device)
-            cv_im = plot_bboxes_3d(cv_im,out,test.calib)
-           
-        if file_out:
-            writer.write(cv_im)
-        
-        cv2.imshow("Frame",cv_im)
-        key = cv2.waitKey(1) & 0xff
-        time.sleep(1/50.0)
-        if key == ord('q'):
-            break
-        
-        # load next frame
+        # load first frame
         im,label = next(test)
-    
-    try:
-        writer.release()
-    except:
-        pass
-    cv2.destroyAllWindows()
+        
+        # opens VideoWriter object for saving video file if necessary
+        if file_out:
+            writer = cv2.VideoWriter(file_out,cv2.CAP_FFMPEG,cv2.VideoWriter_fourcc('M','P','E','G'), 15.0, im.size)
+        
+        while im:
+            
+            cv_im = pil_to_cv(im)
+            if True:
+                cv_im = plot_bboxes_3d(cv_im,label,test.calib,style = "ground_truth")
+                
+                # try conversion
+                out = label_conversion(model,label,test.calib,im.size,device)
+                cv_im = plot_bboxes_3d(cv_im,out,test.calib)
+               
+            if file_out:
+                writer.write(cv_im)
+            
+            cv2.imshow("Frame",cv_im)
+            key = cv2.waitKey(1) & 0xff
+            time.sleep(1/50.0)
+            if key == ord('q'):
+                break
+            
+            # load next frame
+            im,label = next(test)
+        
+        try:
+            writer.release()
+        except:
+            pass
+        cv2.destroyAllWindows()
+
+    if False:
+        # generate converted KITTI file set
+        label_convert_track(test,model,out_directory = "transformed_label_test_KITTI")
