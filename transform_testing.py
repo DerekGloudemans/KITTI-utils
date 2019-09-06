@@ -119,11 +119,11 @@ if __name__ == "__main__":
 
     #-------------------------------- test plot ----------------------------------#
     
-    track_num = 0
-    file_out =  "converted_track{}.avi".format(track_num)
+    track_nums = [0]
+    file_out =  "converted_tracks.avi".format(track_num)
     test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
     
-    test.load_track(track_num)
+    test.load_track(track_nums[0])
     
     # load first frame
     im,label = next(test)
@@ -133,8 +133,8 @@ if __name__ == "__main__":
     if file_out:
         writer = cv2.VideoWriter(file_out,cv2.CAP_FFMPEG,cv2.VideoWriter_fourcc('M','P','E','G'), 15.0, im.size)
     
-    if True:
-        for track_num in range(len(test)):
+    if False:
+        for track_num in track_nums:
             test.load_track(track_num)
             
             # load first frame
@@ -168,6 +168,6 @@ if __name__ == "__main__":
             pass
         cv2.destroyAllWindows()
 
-    if False:
+    if True:
         # generate converted KITTI file set
         label_convert_track(test,model,out_directory = "transformed_label_test_sigmoid")
