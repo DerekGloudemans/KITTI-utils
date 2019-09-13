@@ -7,13 +7,15 @@ import time
 import matplotlib.pyplot as plt
 import numpy as np
 import copy
+import _pickle as pickle
 
 import cv2
 import PIL
 from PIL import Image
 from math import cos,sin
+from util_load import get_coords_3d, plot_text, pil_to_cv
 
-def parse_label_file(label_list,idx):
+def parse_label_file2(label_list,idx):
     """parse label text file into a list of numpy arrays, one for each frame"""
     f = open(label_list[idx])
     line_list = []
@@ -47,51 +49,24 @@ def parse_label_file(label_list,idx):
         det_dict_list.append(det_dict)
     
     return det_dict_list
-    
+
+
 def parse_calib_file(calib_list,idx):
-        """parse calib file to get  camera projection matrix"""
-        f = open(calib_list[idx])
-        line_list = []
-        for line in f:
-            line = line.split()
-            line_list.append(line)
-        line = line_list[2] # get line corresponding to left color camera
-        vals = np.zeros([12])
-        for i in range(0,12):
-            vals[i] = float(line[i+1])
-        calib = vals.reshape((3,4))
-        return calib
+    """parse calib file to get  camera projection matrix"""
+    f = open(calib_list[idx])
+    line_list = []
+    for line in f:
+        line = line.split()
+        line_list.append(line)
+    line = line_list[2] # get line corresponding to left color camera
+    vals = np.zeros([12])
+    for i in range(0,12):
+        vals[i] = float(line[i+1])
+    calib = vals.reshape((3,4))
+    return calib
 
-def pil_to_cv(pil_im):
-    """ convert PIL image to cv2 image"""
-    open_cv_image = np.array(pil_im) 
-    # Convert RGB to BGR 
-    return open_cv_image[:, :, ::-1]
-
-def plot_text(im,offset,cls,idnum,class_colors):
-    """ Plots filled text box on original image, 
-        utility function for plot_bboxes_2d """
     
-    text = "{}: {}".format(idnum,cls)
-    
-    font_scale = 1.0
-    font = cv2.FONT_HERSHEY_PLAIN
-    
-    # set the rectangle background to white
-    rectangle_bgr = class_colors[cls]
-    
-    # get the width and height of the text box
-    (text_width, text_height) = cv2.getTextSize(text, font, fontScale=font_scale, thickness=1)[0]
-    
-    # set the text start position
-    text_offset_x = int(offset[0])
-    text_offset_y = int(offset[1])
-    # make the coords of the box with a small padding of two pixels
-    box_coords = ((text_offset_x, text_offset_y), (text_offset_x + text_width - 2, text_offset_y - text_height - 2))
-    cv2.rectangle(im, box_coords[0], box_coords[1], rectangle_bgr, cv2.FILLED)
-    cv2.putText(im, text, (text_offset_x, text_offset_y), font, fontScale=font_scale, color=(0, 0, 0), thickness=1)
-    
-def plot_bbox_2d(im,det):
+def plot_bbox_2d2(im,det):
     """ Plots rectangular bbox on image and returns image
     im - cv2 or PIL style image (function converts to cv2 style image)
     label - for one det_dict, in the form output by parse_label_file 
@@ -122,7 +97,9 @@ def plot_bbox_2d(im,det):
     cv2.rectangle(cv_im,(bbox[0],bbox[1]),(bbox[2],bbox[3]), class_colors[cls], 1)
     if cls != 'DontCare':
         plot_text(cv_im,(bbox[0],bbox[1]),cls,0,class_colors)
-    return cv_im    
+    return cv_im 
+
+ 
     
 ##############################################################################    
 
@@ -149,14 +126,14 @@ label_list.sort()
 calib_list.sort()
 
 
-
+out_labels = {}
 # loop through images
 for i in range(len(image_list)):
     if i %50 == 0:
         print("On image {} of {}".format(i,len(image_list)))
         
     # get label and cilbration matrix
-    det_dict_list = parse_label_file(label_list,i)
+    det_dict_list = parse_label_file2(label_list,i)
     calib = parse_calib_file(calib_list,i)
     
     # open image
@@ -178,15 +155,16 @@ for i in range(len(image_list)):
             det['offset'] = (crop[0],crop[1])    
     
             
-            cropim = im.crop(crop)
+            crop_im = im.crop(crop)
             
             det['bbox2d'][0] = det['bbox2d'][0] - crop[0]
             det['bbox2d'][1] = det['bbox2d'][1] - crop[1]
             det['bbox2d'][2] = det['bbox2d'][2] - crop[0]
             det['bbox2d'][3] = det['bbox2d'][3] - crop[1]
             
-            if True:
-                box_im = plot_bbox_2d(cropim,det)
+            # show crop if true
+            if False:
+                box_im = plot_bbox_2d2(crop_im,det)
                 cv2.imshow("Frame",box_im)
                 key = cv2.waitKey(0) & 0xff
                 #time.sleep(1/30.0)
@@ -194,7 +172,21 @@ for i in range(len(image_list)):
                     break
             
             # save image
-            cropim.save(os.path.join(new_dir,"images","{:06d}-{:02d}.png".format(i,obj_count)))
+            im_name = "{:06d}-{:02d}.png".format(i,obj_count)
+            crop_im.save(os.path.join(new_dir,"images",im_name))
             obj_count += 1
         
-        
+            # create label - add calib and bbox3d to det_dict
+            det['calib'] = calib
+            det['bbox3d'],det['depths'],det['cam_space'] = get_coords_3d(det,calib)
+            
+            # replace old det_dict with det in det_dict_list
+            out_labels[im_name] = det
+    
+# pickle out_labels
+with open(os.path.join(new_dir,"labels.cpkl"),'wb') as f:
+    pickle.dump(out_labels,f)
+print("Done parsing 3D detection dataset.")
+
+with open(os.path.join(new_dir,"labels.cpkl"),'rb') as f:
+    loaded_labels = pickle.load(f)
