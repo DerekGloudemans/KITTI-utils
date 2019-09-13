@@ -180,6 +180,11 @@ for i in range(len(image_list)):
             det['calib'] = calib
             det['bbox3d'],det['depths'],det['cam_space'] = get_coords_3d(det,calib)
             
+            # shift to cropped image coordinates
+            det['bbox3d'][0,:] = det['bbox3d'][0,:] - crop[0]
+            det['bbox3d'][1,:] = det['bbox3d'][1,:] - crop[1]
+            
+            
             # replace old det_dict with det in det_dict_list
             out_labels[im_name] = det
     
