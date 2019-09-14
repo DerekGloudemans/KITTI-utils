@@ -13,7 +13,7 @@ import cv2
 import PIL
 from PIL import Image
 from math import cos,sin
-from util_load import get_coords_3d, plot_text, pil_to_cv
+from util_load import get_coords_3d, plot_text, pil_to_cv,draw_prism
 
 def parse_label_file2(label_list,idx):
     """parse label text file into a list of numpy arrays, one for each frame"""
@@ -99,7 +99,42 @@ def plot_bbox_2d2(im,det):
         plot_text(cv_im,(bbox[0],bbox[1]),cls,0,class_colors)
     return cv_im 
 
- 
+def plot_bbox_3d2(im,det, style = "normal"):
+    """ Plots rectangular prism bboxes on image and returns image
+    im - cv2 or PIL style image (function converts to cv2 style image)
+    label - for one frame, in the form output by parse_label_file
+    P - camera calibration matrix
+    bbox_im -  cv2 im with bboxes and labels plotted
+    style - string, "ground_truth" or "normal"  ground_truth plots boxes as white
+    """
+        
+    # check type and convert PIL im to cv2 im if necessary
+    assert type(im) in [np.ndarray, PIL.Image.Image,PIL.PngImagePlugin.PngImageFile], "Invalid image format"
+    
+    if type(im) in [PIL.PngImagePlugin.PngImageFile,PIL.Image.Image]:
+        im = pil_to_cv(im)
+    cv_im = im.copy()
+    
+    class_colors = {
+            'Cyclist': (255,150,0),
+            'Pedestrian':(200,800,0),
+            'Person':(160,30,0),
+            'Car': (0,255,150),
+            'Van': (0,255,100),
+            'Truck': (0,255,50),
+            'Tram': (0,100,255),
+            'Misc': (0,50,255),
+            'DontCare': (200,200,200)}
+    
+    cls = det['class']
+    if cls != "DontCare":
+        bbox_3d = det['bbox3d']
+        if style == "ground_truth": # for plotting ground truth and predictions
+            cv_im = draw_prism(cv_im,bbox_3d,(255,255,255))
+        else:
+            cv_im = draw_prism(cv_im,bbox_3d,class_colors[cls])
+            plot_text(cv_im,(bbox_3d[0,4],bbox_3d[1,4]),cls,0,class_colors)
+    return cv_im 
     
 ##############################################################################    
 
@@ -162,14 +197,6 @@ for i in range(len(image_list)):
             det['bbox2d'][2] = det['bbox2d'][2] - crop[0]
             det['bbox2d'][3] = det['bbox2d'][3] - crop[1]
             
-            # show crop if true
-            if False:
-                box_im = plot_bbox_2d2(crop_im,det)
-                cv2.imshow("Frame",box_im)
-                key = cv2.waitKey(0) & 0xff
-                #time.sleep(1/30.0)
-                if key == ord('q'):
-                    break
             
             # save image
             im_name = "{:06d}-{:02d}.png".format(i,obj_count)
@@ -187,7 +214,17 @@ for i in range(len(image_list)):
             
             # replace old det_dict with det in det_dict_list
             out_labels[im_name] = det
-    
+            
+            # show crop if true
+            if True:
+                box_im = plot_bbox_3d2(crop_im,det)
+                cv2.imshow("Frame",box_im)
+                key = cv2.waitKey(0) & 0xff
+                #time.sleep(1/30.0)
+                if key == ord('q'):
+                    break
+            
+            
 # pickle out_labels
 with open(os.path.join(new_dir,"labels.cpkl"),'wb') as f:
     pickle.dump(out_labels,f)
