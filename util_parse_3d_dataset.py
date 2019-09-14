@@ -161,7 +161,7 @@ label_list.sort()
 calib_list.sort()
 
 
-out_labels = {}
+out_labels = []
 # loop through images
 for i in range(len(image_list)):
     if i %50 == 0:
@@ -210,13 +210,13 @@ for i in range(len(image_list)):
             # shift to cropped image coordinates
             det['bbox3d'][0,:] = det['bbox3d'][0,:] - crop[0]
             det['bbox3d'][1,:] = det['bbox3d'][1,:] - crop[1]
-            
+            det['im_name'] = im_name
             
             # replace old det_dict with det in det_dict_list
-            out_labels[im_name] = det
+            out_labels.append(det)
             
             # show crop if true
-            if True:
+            if False:
                 box_im = plot_bbox_3d2(crop_im,det)
                 cv2.imshow("Frame",box_im)
                 key = cv2.waitKey(0) & 0xff
