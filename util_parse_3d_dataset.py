@@ -3,6 +3,7 @@ Parse KITTI 3D object dataset into separate images for each object in each frame
 and get associated labels
 """
 import os
+import sys
 import time
 import matplotlib.pyplot as plt
 import numpy as np
@@ -139,11 +140,16 @@ def plot_bbox_3d2(im,det, style = "normal"):
 ##############################################################################    
 
 
-
-image_dir = "C:\\Users\\derek\\Desktop\\KITTI\\3D_object\\Images\\training\\image_2"
-label_dir = "C:\\Users\\derek\\Desktop\\KITTI\\3D_object\\Detection_Labels\\data_object_label_2\\training\\label_2"
-calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\3D_object\\data_object_calib\\training\\calib"
-new_dir = "C:\\Users\\derek\\Desktop\\KITTI\\3D_object_parsed"
+if sys.platform == 'linux':
+    image_dir = "/media/worklab/data_HDD/cv_data/KITTI/3D_object/Images/training/image_2"
+    label_dir = "/media/worklab/data_HDD/cv_data/KITTI/3D_object/Detection_Labels/data_object_label_2/training/label_2"
+    calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/3D_object/calib/training/calib"
+    new_dir =   "/media/worklab/data_HDD/cv_data/KITTI/3D_object_parsed"
+else:
+    image_dir = "C:\\Users\\derek\\Desktop\\KITTI\\3D_object\\Images\\training\\image_2"
+    label_dir = "C:\\Users\\derek\\Desktop\\KITTI\\3D_object\\Detection_Labels\\data_object_label_2\\training\\label_2"
+    calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\3D_object\\data_object_calib\\training\\calib"
+    new_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\3D_object_parsed"
 buffer = 25
 
 # create new directory for holding image crops
