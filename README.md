@@ -26,3 +26,5 @@ A few additional files are included in this repository and are briefly summarize
 - util_tf_net - contains pytorch neural network model for depth estimation
 - util_parse_3d_dataset - contains utilities for creating label dataset
 - transform_testing - contains code for plotting 2D->3D transformed labels
+
+If you'd like to use this repository or have any questions, feel free to reach out and I'll be happy to get it into a more polished state!
