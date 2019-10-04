@@ -47,13 +47,13 @@ if __name__ == "__main__":
     num_epochs = 300
     checkpoint_file = "checkpoints/sigmoid_3d_280.pt"
     
-#    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
-#    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
-#    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
-    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
-    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
-    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
-    
+    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
+    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
+    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
+#    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
+#    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+#    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
+  
     params = {'batch_size': 32,
               'shuffle': True,
               'num_workers': 0}
@@ -83,6 +83,7 @@ if __name__ == "__main__":
             checkpoint = torch.load(checkpoint_file)
             model.load_state_dict(checkpoint['model_state_dict'])
     
+    model = model.to(device)
     print("Got model.")
     # define loss function
     #criterion = nn.MSELoss()
@@ -120,7 +121,7 @@ if __name__ == "__main__":
     #-------------------------------- test plot ----------------------------------#
     
     track_nums = [0]
-    file_out =  "converted_tracks.avi".format(track_num)
+    file_out =  "converted_tracks.avi"#.format(track_num)
     test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
     
     test.load_track(track_nums[0])
@@ -132,8 +133,8 @@ if __name__ == "__main__":
     # opens VideoWriter object for saving video file if necessary
     if file_out:
         writer = cv2.VideoWriter(file_out,cv2.CAP_FFMPEG,cv2.VideoWriter_fourcc('M','P','E','G'), 15.0, im.size)
-    
-    if False:
+    frame = 0
+    if True:
         for track_num in track_nums:
             test.load_track(track_num)
             
@@ -153,6 +154,9 @@ if __name__ == "__main__":
                 if file_out:
                     writer.write(cv_im)
                 
+                cv2.imwrite("temp{}.png".format(frame),cv_im)
+                frame += 1
+                
                 cv2.imshow("Frame",cv_im)
                 key = cv2.waitKey(1) & 0xff
                 time.sleep(1/50.0)
@@ -168,6 +172,6 @@ if __name__ == "__main__":
             pass
         cv2.destroyAllWindows()
 
-    if True:
+    if False:
         # generate converted KITTI file set
         label_convert_track(test,model,out_directory = "transformed_label_test_sigmoid")
