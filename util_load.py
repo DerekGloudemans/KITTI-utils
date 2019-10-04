@@ -322,29 +322,33 @@ def plot_bboxes_3d(im,label,P, style = "normal"):
 
  ################################# Tester Code ################################    
 if __name__ == "__main__":    
-#    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
-#    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
-#    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
+    train_im_dir =    "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Tracks\\training\\image_02"  
+    train_lab_dir =   "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\Labels\\training\\label_02"
+    train_calib_dir = "C:\\Users\\derek\\Desktop\\KITTI\\Tracking\\data_tracking_calib(1)\\training\\calib"
     
-    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
-    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
-    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
+#    train_im_dir =    "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Tracks/training/image_02"  
+#    train_lab_dir =   "/media/worklab/data_HDD/cv_data/KITTI/Tracking/Labels/training/label_02"
+#    train_calib_dir = "/media/worklab/data_HDD/cv_data/KITTI/Tracking/data_tracking_calib(1)/training/calib"
     
     test = Track_Dataset(train_im_dir,train_lab_dir,train_calib_dir)
-    test.load_track(18)
+    test.load_track(14)
     
     
     
     im,label = next(test)
-    
+    frame = 0
     while im:
         
         cv_im = pil_to_cv(im)
         if True:
             cv_im = plot_bboxes_3d(cv_im,label,test.calib)
+            #cv_im = plot_bboxes_2d(cv_im,label)
         cv2.imshow("Frame",cv_im)
         key = cv2.waitKey(1) & 0xff
         #time.sleep(1/30.0)
+        if frame > 60:
+            cv2.imwrite("temp{}.png".format(frame),cv_im)
+        frame +=1
         if key == ord('q'):
             break
         
