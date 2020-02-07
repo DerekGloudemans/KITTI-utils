@@ -11,7 +11,7 @@
 
  Critically, when 3D bounding boxes are projected into 2D image space, depth information from these points is lost. In transform testing, a Pytorch model is trained to predict the depth of each 3D bounding box corner point, given the corner coordinates in image space. Why is this useful? Nearly all current 3D bounding box detectors and trackers use camera-space coordinates, relying on a precisely calibrated camera to generate all training and testing data. However, a convolutional neural network for 3D bounding box regression can be trained to predict coordinates natively in 2D space, and the depth estimation model can subsequently be used to reproject these coordinates back into 3D space. This allows for more flexibility in the type of data that can be used for training CNN models. 
  
- Examples below show the ground truth 3D bounding boxes in white, as well as the reprojected 2D->3D->2D bounding boxes in color, where the 2D->3D step is loss and relies on the depth estimation model.
+ Examples below show the ground truth 3D bounding boxes in white, as well as the reprojected 2D->3D->2D bounding boxes in color, where the 2D->3D step relies on the depth estimation model.
 ![](images_for_readme/kitti_convert.gif)
 ![](images_for_readme/convert_im.png)
 
